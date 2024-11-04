@@ -1,16 +1,16 @@
 <Project>
   <PropertyGroup>
-    <AssemblyVersion>1.47.0</AssemblyVersion>
+    <AssemblyVersion>1.47.0.1</AssemblyVersion>
     <PackageVersion>$(AssemblyVersion)</PackageVersion>
     <DriverVersion>1.47.0-beta-1726138322000</DriverVersion>
     <ReleaseVersion>$(AssemblyVersion)</ReleaseVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
     <NoDefaultExcludes>true</NoDefaultExcludes>
-    <Authors>Microsoft</Authors>
-    <Owners>Microsoft</Owners>
-    <PackageProjectUrl>https://github.com/microsoft/playwright-dotnet</PackageProjectUrl>
+    <Authors>Erffun</Authors>
+    <Owners>Erffun</Owners>
+    <PackageProjectUrl>https://github.com/Erffun/undetected-playwright-dotnet</PackageProjectUrl>
     <PackageTags>headless,chrome,firefox,webkit,playwright</PackageTags>
-    <RepositoryUrl>https://github.com/microsoft/playwright-dotnet.git</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Erffun/undetected-playwright-dotnet.git</RepositoryUrl>
     <PackageReleaseNotes><![CDATA[
 ]]></PackageReleaseNotes>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
