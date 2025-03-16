@@ -1,18 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Title>Microsoft.Playwright.CLI</Title>
-    <PackageId>Microsoft.Playwright.CLI</PackageId>
-    <Summary>The Playwright CLI dotnet tool.</Summary>
-    <Description>Playwright enables reliable end-to-end testing for modern web apps. It is built to enable cross-browser web automation that is ever-green, capable, reliable and fast. Learn more at https://playwright.dev/dotnet/.</Description>
+    <Title>Undetected.Playwright.CLI</Title>
+    <PackageId>Undetected.Playwright.CLI</PackageId>
+    <Summary>The Undetected Playwright CLI dotnet tool.</Summary>
+    <Description>Undetected Playwright enables reliable end-to-end testing for modern web apps. It is built to enable cross-browser web automation that is ever-green, capable, reliable and fast. Learn more at https://playwright.dev/dotnet/.</Description>
     <PackageIcon>icon.png</PackageIcon>
     <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RunWithWarnings>true</RunWithWarnings>
-    <RootNamespace>Microsoft.Playwright.CLI</RootNamespace>
+    <RootNamespace>Undetected.Playwright.CLI</RootNamespace>
     <ReleaseVersion>0.0.0</ReleaseVersion>
     <BuildFromSource>True</BuildFromSource>
-    <AssemblyName>Microsoft.Playwright.CLI</AssemblyName>
+    <AssemblyName>Undetected.Playwright.CLI</AssemblyName>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>playwright</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
@@ -21,15 +21,15 @@
   </PropertyGroup>
   <PropertyGroup>
     <AssemblyVersion>1.2.4</AssemblyVersion>
-    <PackageVersion>$(AssemblyVersion)-next-1</PackageVersion>
+    <PackageVersion>$(AssemblyVersion)-next-2</PackageVersion>
     <ReleaseVersion>$(AssemblyVersion)</ReleaseVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
     <NoDefaultExcludes>true</NoDefaultExcludes>
-    <Authors>Microsoft</Authors>
-    <Owners>Microsoft</Owners>
-    <PackageProjectUrl>https://github.com/microsoft/playwright-dotnet</PackageProjectUrl>
+    <Authors>Erffun</Authors>
+    <Owners>Erffun</Owners>
+    <PackageProjectUrl>https://github.com/Erffun/undetected-playwright-dotnet</PackageProjectUrl>
     <PackageTags>headless,chrome,firefox,webkit,playwright</PackageTags>
-    <RepositoryUrl>https://github.com/microsoft/playwright-dotnet.git</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Erffun/undetected-playwright-dotnet.git</RepositoryUrl>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReleaseNotes><![CDATA[

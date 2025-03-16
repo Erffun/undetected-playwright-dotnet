@@ -23,6 +23,7 @@
     <Authors>Erffun</Authors>
     <RepositoryUrl>https://github.com/Erffun/undetected-playwright-dotnet.git</RepositoryUrl>
     <PackageProjectUrl>https://github.com/Erffun/undetected-playwright-dotnet</PackageProjectUrl>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
   <Import Project="../Common/Version.props" />
   <Import Project="../Common/Dependencies.props" />
