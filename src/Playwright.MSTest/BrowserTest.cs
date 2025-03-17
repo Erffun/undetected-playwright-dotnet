@@ -24,7 +24,6 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Playwright.MSTest.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Microsoft.Playwright.MSTest;
@@ -45,13 +44,14 @@ public class BrowserTest : PlaywrightTest
     [TestInitialize]
     public async Task BrowserSetup()
     {
-        Browser = (await GetService<BrowserService>().ConfigureAwait(false)).Browser;
+        var service = await BrowserService.Register(this, BrowserType, await ConnectOptionsAsync()).ConfigureAwait(false);
+        Browser = service.Browser;
     }
 
     [TestCleanup]
     public async Task BrowserTearDown()
     {
-        if (TestOK)
+        if (TestOK())
         {
             foreach (var context in _contexts)
             {
@@ -61,4 +61,6 @@ public class BrowserTest : PlaywrightTest
         _contexts.Clear();
         Browser = null!;
     }
+
+    public virtual Task<(string, BrowserTypeConnectOptions?)?> ConnectOptionsAsync() => Task.FromResult<(string, BrowserTypeConnectOptions?)?>(null);
 }

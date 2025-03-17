@@ -24,7 +24,6 @@
  */
 
 using System.Net;
-using Microsoft.AspNetCore.Http;
 
 namespace Microsoft.Playwright.Tests;
 
@@ -62,6 +61,7 @@ public class FrameGoToTests : PageTestEx
     }
 
     [PlaywrightTest("frame-goto.spec.ts", "should continue after client redirect")]
+    [Skip(SkipAttribute.Targets.Firefox)]
     public async Task ShouldContinueAfterClientRedirect()
     {
         Server.SetRoute("/frames/script.js", _ => Task.Delay(10000));

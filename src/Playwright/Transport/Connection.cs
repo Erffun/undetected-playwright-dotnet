@@ -131,7 +131,7 @@ internal class Connection : IDisposable
         ChannelOwner @object,
         string method,
         Dictionary<string, object> args = null,
-        bool keepNulls = false) => WrapApiCallAsync(() => InnerSendMessageToServerAsync<T>(@object, method, args, keepNulls));
+        bool keepNulls = false) => WrapApiCallAsync(() => InnerSendMessageToServerAsync<T>(@object, method, args, keepNulls), @object?._isInternalType ?? false);
 
     private async Task<T> InnerSendMessageToServerAsync<T>(
         ChannelOwner @object,
@@ -385,6 +385,9 @@ internal class Connection : IDisposable
                 break;
             case ChannelOwnerType.WebSocket:
                 result = new WebSocket(parent, guid, initializer?.ToObject<WebSocketInitializer>(DefaultJsonSerializerOptions));
+                break;
+            case ChannelOwnerType.WebSocketRoute:
+                result = new WebSocketRoute(parent, guid, initializer?.ToObject<WebSocketRouteInitializer>(DefaultJsonSerializerOptions));
                 break;
             case ChannelOwnerType.Selectors:
                 result = new Selectors(parent, guid);

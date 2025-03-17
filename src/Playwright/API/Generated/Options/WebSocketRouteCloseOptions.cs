@@ -6,7 +6,7 @@
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
@@ -22,16 +22,44 @@
  * SOFTWARE.
  */
 
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Playwright.Transport.Protocol;
+#nullable enable
 
-internal class OriginStorage
+namespace Microsoft.Playwright;
+
+public class WebSocketRouteCloseOptions
 {
-    [JsonPropertyName("origin")]
-    public string Origin { get; set; }
+    public WebSocketRouteCloseOptions() { }
 
-    [JsonPropertyName("localStorage")]
-    public List<NameValue> LocalStorage { get; set; }
+    public WebSocketRouteCloseOptions(WebSocketRouteCloseOptions clone)
+    {
+        if (clone == null)
+        {
+            return;
+        }
+
+        Code = clone.Code;
+        Reason = clone.Reason;
+    }
+
+    /// <summary>
+    /// <para>
+    /// Optional <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close#code">close
+    /// code</a>.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("code")]
+    public int? Code { get; set; }
+
+    /// <summary>
+    /// <para>
+    /// Optional <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close#reason">close
+    /// reason</a>.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
 }
+
+#nullable disable

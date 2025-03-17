@@ -23,44 +23,32 @@
  * SOFTWARE.
  */
 
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Net.WebSockets;
+using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.DependencyInjection;
+using NUnit.Framework.Internal;
 
 namespace Microsoft.Playwright.Tests.TestServer;
 
 public class SimpleServer
 {
-    const int MaxMessageSize = 256 * 1024;
-
-    private readonly IDictionary<string, Action<HttpContext>> _requestWaits;
-    private readonly IList<Func<WebSocket, HttpContext, Task>> _waitForWebSocketConnectionRequestsWaits;
+    private readonly IDictionary<string, Action<HttpContext>> _requestSubscribers;
+    private readonly ConcurrentBag<Func<WebSocketWithEvents, HttpContext, Task>> _webSocketSubscribers;
     private readonly IDictionary<string, Func<HttpContext, Task>> _routes;
     private readonly IDictionary<string, (string username, string password)> _auths;
     private readonly IDictionary<string, string> _csp;
     private readonly IList<string> _gzipRoutes;
     private readonly string _contentRoot;
 
-
     private ArraySegment<byte> _onWebSocketConnectionData;
     private readonly IWebHost _webHost;
-    private static int _counter;
-    private readonly Dictionary<int, WebSocket> _clients = new();
 
     public int Port { get; }
     public string Prefix { get; }
@@ -80,8 +68,9 @@ public class SimpleServer
 
         EmptyPage = $"{Prefix}/empty.html";
 
-        _requestWaits = new ConcurrentDictionary<string, Action<HttpContext>>();
-        _waitForWebSocketConnectionRequestsWaits = [];
+        var currentExecutionContext = TestExecutionContext.CurrentContext;
+        _requestSubscribers = new ConcurrentDictionary<string, Action<HttpContext>>();
+        _webSocketSubscribers = [];
         _routes = new ConcurrentDictionary<string, Func<HttpContext, Task>>();
         _auths = new ConcurrentDictionary<string, (string username, string password)>();
         _csp = new ConcurrentDictionary<string, string>();
@@ -89,35 +78,38 @@ public class SimpleServer
         _contentRoot = contentRoot;
 
         _webHost = new WebHostBuilder()
+            .ConfigureLogging(logging =>
+            {
+                // Allow seeing exceptions in the console output.
+                logging.AddConsole();
+                logging.SetMinimumLevel(LogLevel.Error);
+            })
             .Configure((app) => app
                 .UseWebSockets()
-                .UseDeveloperExceptionPage()
                 .Use(middleware: async (HttpContext context, Func<Task> next) =>
                 {
-                    if (context.Request.Path == "/ws")
                     {
-                        if (context.WebSockets.IsWebSocketRequest)
+                        // This hack allows us to have Console.WriteLine etc. appear in the test output.
+                        var currentContext = typeof(TestExecutionContext).GetField("AsyncLocalCurrentContext", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null) as AsyncLocal<TestExecutionContext>;
+                        currentContext.Value = currentExecutionContext;
+                    }
+                    if (context.WebSockets.IsWebSocketRequest && context.Request.Path == "/ws")
+                    {
+                        var webSocket = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
+                        var testWebSocket = new WebSocketWithEvents(webSocket, context.Request);
+                        if (_onWebSocketConnectionData != null)
                         {
-                            var webSocket = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
-                            foreach (var wait in _waitForWebSocketConnectionRequestsWaits)
-                            {
-                                _waitForWebSocketConnectionRequestsWaits.Remove(wait);
-                                await wait(webSocket, context).ConfigureAwait(false);
-                            }
-                            if (_onWebSocketConnectionData != null)
-                            {
-                                await webSocket.SendAsync(_onWebSocketConnectionData, WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
-                            }
-                            await ReceiveLoopAsync(webSocket, context.Request.Headers["User-Agent"].ToString().Contains("Firefox"), CancellationToken.None).ConfigureAwait(false);
+                            await webSocket.SendAsync(_onWebSocketConnectionData, WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
                         }
-                        else if (!context.Response.HasStarted)
+                        foreach (var wait in _webSocketSubscribers)
                         {
-                            context.Response.StatusCode = 400;
+                            await wait(testWebSocket, context).ConfigureAwait(false);
                         }
+                        await testWebSocket.RunReceiveLoop().ConfigureAwait(false);
                         return;
                     }
 
-                    if (_requestWaits.TryGetValue(context.Request.Path, out var requestWait))
+                    if (_requestSubscribers.TryGetValue(context.Request.Path, out var requestWait))
                     {
                         requestWait(context);
                     }
@@ -153,7 +145,7 @@ public class SimpleServer
             {
                 if (isHttps)
                 {
-                    var cert = new X509Certificate2("key.pfx", "aaaa");
+                    var cert = new X509Certificate2("TestServer/key.pfx", "aaaa");
                     options.Listen(IPAddress.Loopback, port, listenOptions => listenOptions.UseHttps(cert));
                 }
                 else
@@ -236,7 +228,7 @@ public class SimpleServer
 
     public void SetCSP(string path, string csp) => _csp.Add(path, csp);
 
-    public Task StartAsync() => _webHost.StartAsync();
+    public Task StartAsync(CancellationToken cancellationToken) => _webHost.StartAsync(cancellationToken);
 
     public Task StopAsync()
     {
@@ -250,9 +242,10 @@ public class SimpleServer
         _routes.Clear();
         _auths.Clear();
         _csp.Clear();
-        _requestWaits.Clear();
+        _requestSubscribers.Clear();
         _gzipRoutes.Clear();
         _onWebSocketConnectionData = null;
+        _webSocketSubscribers.Clear();
     }
 
     public void EnableGzip(string path) => _gzipRoutes.Add(path);
@@ -276,33 +269,33 @@ public class SimpleServer
     public async Task<T> WaitForRequest<T>(string path, Func<HttpRequest, T> selector)
     {
         var taskCompletion = new TaskCompletionSource<T>();
-        _requestWaits.Add(path, context =>
+        _requestSubscribers.Add(path, context =>
         {
             taskCompletion.SetResult(selector(context.Request));
         });
 
         var request = await taskCompletion.Task.ConfigureAwait(false);
-        _requestWaits.Remove(path);
+        _requestSubscribers.Remove(path);
 
         return request;
     }
 
     public Task WaitForRequest(string path) => WaitForRequest(path, _ => true);
 
-    public async Task<(WebSocket, HttpRequest)> WaitForWebSocketConnectionRequest()
+    public Task<WebSocketWithEvents> WaitForWebSocketAsync()
     {
-        var taskCompletion = new TaskCompletionSource<(WebSocket, HttpRequest)>();
-        OnceWebSocketConnection((WebSocket ws, HttpContext context) =>
+        var tcs = new TaskCompletionSource<WebSocketWithEvents>();
+        OnceWebSocketConnection((ws, _) =>
         {
-            taskCompletion.SetResult((ws, context.Request));
+            tcs.SetResult(ws);
             return Task.CompletedTask;
         });
-        return await taskCompletion.Task.ConfigureAwait(false);
+        return tcs.Task;
     }
 
-    public void OnceWebSocketConnection(Func<WebSocket, HttpContext, Task> handler)
+    public void OnceWebSocketConnection(Func<WebSocketWithEvents, HttpContext, Task> handler)
     {
-        _waitForWebSocketConnectionRequestsWaits.Add(handler);
+        _webSocketSubscribers.Add(handler);
     }
 
     private static bool Authenticate(string username, string password, HttpContext context)
@@ -317,74 +310,5 @@ public class SimpleServer
             return auth == $"{username}:{password}";
         }
         return false;
-    }
-
-    private async Task ReceiveLoopAsync(WebSocket webSocket, bool sendCloseMessage, CancellationToken token)
-    {
-        int connectionId = NextConnectionId();
-        _clients.Add(connectionId, webSocket);
-
-        byte[] buffer = new byte[MaxMessageSize];
-
-        try
-        {
-            while (true)
-            {
-                var result = await webSocket.ReceiveAsync(new(buffer), token).ConfigureAwait(false);
-
-                if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    if (sendCloseMessage)
-                    {
-                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Close", CancellationToken.None).ConfigureAwait(false);
-                    }
-                    break;
-                }
-
-                var data = await ReadFrames(result, webSocket, buffer, token).ConfigureAwait(false);
-
-                if (data.Count == 0)
-                {
-                    break;
-                }
-            }
-        }
-        finally
-        {
-            _clients.Remove(connectionId);
-        }
-    }
-
-    private async Task<ArraySegment<byte>> ReadFrames(WebSocketReceiveResult result, WebSocket webSocket, byte[] buffer, CancellationToken token)
-    {
-        int count = result.Count;
-
-        while (!result.EndOfMessage)
-        {
-            if (count >= MaxMessageSize)
-            {
-                string closeMessage = $"Maximum message size: {MaxMessageSize} bytes.";
-                await webSocket.CloseAsync(WebSocketCloseStatus.MessageTooBig, closeMessage, token).ConfigureAwait(false);
-                return new();
-            }
-
-            result = await webSocket.ReceiveAsync(new(buffer, count, MaxMessageSize - count), token).ConfigureAwait(false);
-            count += result.Count;
-
-        }
-        return new(buffer, 0, count);
-    }
-
-
-    private static int NextConnectionId()
-    {
-        int id = Interlocked.Increment(ref _counter);
-
-        if (id == int.MaxValue)
-        {
-            throw new("connection id limit reached: " + id);
-        }
-
-        return id;
     }
 }

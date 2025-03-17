@@ -22,9 +22,9 @@
  * SOFTWARE.
  */
 
-import http from 'http';
 import { test, expect } from '../baseTest';
-import httpProxy from 'http-proxy';
+
+test.use({ testMode: 'nunit' });
 
 test('should be able to forward DEBUG=pw:api env var', async ({ runTest }) => {
   const result = await runTest({
@@ -181,7 +181,7 @@ test('should be able to make the browser headed via the env', async ({ runTest }
   expect(result.stdout).not.toContain("Headless")
 });
 
-test('should be able to to parse BrowserName and LaunchOptions.Headless from runsettings', async ({ runTest }) => {
+test('should be able to parse BrowserName and LaunchOptions.Headless from runsettings', async ({ runTest }) => {
   const result = await runTest({
     'ExampleTests.cs': `
       using System;
@@ -221,23 +221,7 @@ test('should be able to to parse BrowserName and LaunchOptions.Headless from run
   expect(result.stdout).not.toContain("Headless")
 });
 
-test('should be able to parse LaunchOptions.Proxy from runsettings', async ({ runTest }) => {
-  const httpServer = http.createServer((req, res) => {
-    res.end('hello world!')
-  }).listen(3129);
-  const proxyServer = httpProxy.createProxyServer({
-    auth: 'user:pwd',
-    target: 'http://localhost:3129',
-  }).listen(3128);
-
-  const waitForProxyRequest = new Promise<[string, string]>((resolve) => {
-    proxyServer.once('proxyReq', (proxyReq, req, res, options) => {
-      const authHeader = proxyReq.getHeader('authorization') as string;
-      const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString();
-      resolve([req.url, auth]);
-    });
-  })
-
+test('should be able to parse LaunchOptions.Proxy from runsettings', async ({ runTest, proxyServer }) => {
   const result = await runTest({
     'ExampleTests.cs': `
       using System;
@@ -264,7 +248,7 @@ test('should be able to parse LaunchOptions.Proxy from runsettings', async ({ ru
                 <LaunchOptions>
                     <Headless>false</Headless>
                     <Proxy>
-                        <Server>http://127.0.0.1:3128</Server>
+                        <Server>${proxyServer.listenAddr()}</Server>
                         <Username>user</Username>
                         <Password>pwd</Password>
                     </Proxy>
@@ -279,12 +263,9 @@ test('should be able to parse LaunchOptions.Proxy from runsettings', async ({ ru
 
   expect(result.stdout).not.toContain("Headless");
 
-  const [url, auth] = await waitForProxyRequest;
+  const { url, auth } = proxyServer.requests.find(r => r.url === 'http://example.com/')!;;
   expect(url).toBe('http://example.com/');
   expect(auth).toBe('user:pwd');
-
-  proxyServer.close();
-  httpServer.close();
 });
 
 test('should be able to parse LaunchOptions.Args from runsettings', async ({ runTest }) => {
@@ -440,6 +421,7 @@ test.describe('Expect() timeout', () => {
     expect(result.total).toBe(1);
     expect(result.rawStdout).toContain("LocatorAssertions.ToHaveTextAsync with timeout 5000ms")
   });
+
   test('should be able to override it via each Expect() call', async ({ runTest }) => {
     const result = await runTest({
       'ExampleTests.cs': `
@@ -503,5 +485,50 @@ test.describe('Expect() timeout', () => {
     expect(result.failed).toBe(1);
     expect(result.total).toBe(1);
     expect(result.rawStdout).toContain("LocatorAssertions.ToHaveTextAsync with timeout 123ms")
+  });
+});
+
+test.describe('ConnectOptions', () => {
+  const ExampleTestWithConnectOptions = `
+    using System;
+    using System.Threading.Tasks;
+    using Microsoft.Playwright;
+    using Microsoft.Playwright.NUnit;
+    using NUnit.Framework;
+
+    namespace Playwright.TestingHarnessTest.NUnit;
+
+    public class <class-name> : PageTest
+    {
+        [Test]
+        public async Task Test()
+        {
+            await Page.GotoAsync("about:blank");
+        }
+
+        public override async Task<(string, BrowserTypeConnectOptions)?> ConnectOptionsAsync()
+        {
+            return ("http://127.0.0.1:1234", null);
+        }
+  }`;
+
+  test('should fail when the server is not reachable', async ({ runTest }) => {
+    const result = await runTest({
+      'ExampleTests.cs': ExampleTestWithConnectOptions,
+    }, 'dotnet test');
+    expect(result.passed).toBe(0);
+    expect(result.failed).toBe(1);
+    expect(result.total).toBe(1);
+    expect(result.rawStdout).toContain('connect ECONNREFUSED 127.0.0.1:1234')
+  });
+
+  test('should pass when the server is reachable', async ({ runTest, launchServer }) => {
+    await launchServer({ port: 1234 });
+    const result = await runTest({
+      'ExampleTests.cs': ExampleTestWithConnectOptions,
+    }, 'dotnet test');
+    expect(result.passed).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(result.total).toBe(1);
   });
 });

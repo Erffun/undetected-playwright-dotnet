@@ -1,8 +1,10 @@
 import fs from 'fs';
+import http from 'http';
 import path from 'path';
 import childProcess from 'child_process';
-import { test as base } from '@playwright/test';
+import { test as base, BrowserServer } from '@playwright/test';
 import { XMLParser } from 'fast-xml-parser';
+import { AddressInfo } from 'net';
 
 type RunResult = {
   command: string;
@@ -16,15 +18,33 @@ type RunResult = {
 }
 
 export const test = base.extend<{
+  proxyServer: ProxyServer;
+  testMode: 'nunit' | 'mstest' | 'xunit';
   runTest: (files: Record<string, string>, command: string, env?: NodeJS.ProcessEnv) => Promise<RunResult>;
+  launchServer: ({ port: number }) => Promise<void>;
 }>({
-  runTest: async ({ }, use, testInfo) => {
+  proxyServer: async ({}, use) => {
+    const proxyServer = new ProxyServer();
+    await proxyServer.listen();
+    await use(proxyServer);
+    await proxyServer.stop();
+  },
+  testMode: null,
+  launchServer: async ({ playwright }, use) => {
+    const servers: BrowserServer[] = [];
+    await use(async ({port}: {port: number}) => {
+      servers.push(await playwright.chromium.launchServer({ port }));
+    });
+    for (const server of servers)
+      await server.close();
+  },
+  runTest: async ({ testMode }, use, testInfo) => {
     const testResults: RunResult[] = [];
     await use(async (files, command, env) => {
       const testDir = testInfo.outputPath();
       const testClassName = testInfo.titlePath.join(' ').replace(/[^\w]/g, '');
       for (const [fileName, fileContent] of Object.entries(files)) {
-        await fs.promises.writeFile(path.join(testDir, fileName), unintentFile(fileContent).replace('<class-name>', testClassName));
+        await fs.promises.writeFile(path.join(testDir, fileName), unintentFile(fileContent).replaceAll('<class-name>', testClassName));
       }
       const trxFile = path.join(testDir, 'result.trx');
       command += ` --logger "trx;logfilename=${trxFile}" --logger "console;verbosity=detailed" --filter "${testClassName}" ${path.join('..', '..')}`;
@@ -34,7 +54,9 @@ export const test = base.extend<{
         env: {
           ...process.env,
           ...env,
-          NODE_OPTIONS: undefined
+          NODE_OPTIONS: undefined,
+          TEST_MODE: testMode,
+          PWTEST_TEST_DIR: testDir,
         },
         stdio: 'pipe',
       });
@@ -121,6 +143,44 @@ function extractVstestMessages(stdout: string, prefix: string): string {
     out += match[1];
   }
   return out;
+}
+
+class ProxyServer {
+  private _server: http.Server;
+  public requests: { url: string, auth: string}[] = [];
+
+  constructor() {
+    this._server = http.createServer(this.handler.bind(this));
+  }
+
+  handler(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (req.url.includes('google.com')) // Telemetry requests.
+      return;
+    if (!req.headers['proxy-authorization']) {
+      res.writeHead(407, { 'Proxy-Authenticate': 'Basic realm="Access to internal site"' });
+      res.end();
+      return;
+    }
+    const auth = Buffer.from(req.headers['proxy-authorization'].split(' ')[1], 'base64').toString();
+    this.requests.push({
+      url: req.url,
+      auth: auth,
+    })
+    res.writeHead(200);
+    res.end('OK');
+  }
+
+  listenAddr() {
+    return `http://127.0.0.1:${(this._server.address() as AddressInfo).port}`;
+  }
+
+  async listen() {
+    await new Promise<void>(resolve => this._server.listen(0, resolve));
+  }
+
+  async stop() {
+    await new Promise<void>(resolve => this._server.close(() => resolve()));
+  }
 }
 
 export { expect } from '@playwright/test';

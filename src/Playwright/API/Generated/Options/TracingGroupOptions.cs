@@ -6,7 +6,7 @@
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
@@ -24,31 +24,32 @@
 
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Playwright.Transport.Protocol;
+#nullable enable
 
-internal class NetworkCookie
+namespace Microsoft.Playwright;
+
+public class TracingGroupOptions
 {
-    [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public TracingGroupOptions() { }
 
-    [JsonPropertyName("value")]
-    public string Value { get; set; }
+    public TracingGroupOptions(TracingGroupOptions clone)
+    {
+        if (clone == null)
+        {
+            return;
+        }
 
-    [JsonPropertyName("domain")]
-    public string Domain { get; set; }
+        Location = clone.Location;
+    }
 
-    [JsonPropertyName("path")]
-    public string Path { get; set; }
-
-    [JsonPropertyName("expires")]
-    public int Expires { get; set; }
-
-    [JsonPropertyName("httpOnly")]
-    public bool HttpOnly { get; set; }
-
-    [JsonPropertyName("secure")]
-    public bool Secure { get; set; }
-
-    [JsonPropertyName("sameSite")]
-    public string SameSite { get; set; }
+    /// <summary>
+    /// <para>
+    /// Specifies a custom location for the group to be shown in the trace viewer. Defaults
+    /// to the location of the <see cref="ITracing.GroupAsync"/> call.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("location")]
+    public Location? Location { get; set; }
 }
+
+#nullable disable

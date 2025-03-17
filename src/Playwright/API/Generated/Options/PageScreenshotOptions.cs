@@ -100,8 +100,10 @@ public class PageScreenshotOptions
     /// <summary>
     /// <para>
     /// Specify locators that should be masked when the screenshot is taken. Masked elements
-    /// will be overlaid with a pink box <c>#FF00FF</c> (customized by <paramref name="maskColor"/>)
-    /// that completely covers its bounding box.
+    /// will be overlaid with a pink box <c>#FF00FF</c> (customized by <see cref="IPage.ScreenshotAsync"/>)
+    /// that completely covers its bounding box. The mask is also applied to invisible elements,
+    /// see <a href="https://playwright.dev/dotnet/docs/locators#matching-only-visible-elements">Matching
+    /// only visible elements</a> to disable that.
     /// </para>
     /// </summary>
     [JsonPropertyName("mask")]
@@ -128,9 +130,9 @@ public class PageScreenshotOptions
     /// <summary>
     /// <para>
     /// The file path to save the image to. The screenshot type will be inferred from file
-    /// extension. If <paramref name="path"/> is a relative path, then it is resolved relative
-    /// to the current working directory. If no path is provided, the image won't be saved
-    /// to the disk.
+    /// extension. If <see cref="IPage.ScreenshotAsync"/> is a relative path, then it is
+    /// resolved relative to the current working directory. If no path is provided, the
+    /// image won't be saved to the disk.
     /// </para>
     /// </summary>
     [JsonPropertyName("path")]

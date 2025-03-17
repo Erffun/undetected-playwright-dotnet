@@ -6,7 +6,7 @@
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
@@ -22,34 +22,39 @@
  * SOFTWARE.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Playwright.Transport.Protocol;
+using System.Text.Json.Serialization;
 
-namespace Microsoft.Playwright.Core;
+#nullable enable
 
-internal class StorageState : IEquatable<StorageState>
+namespace Microsoft.Playwright;
+
+public class LocatorAssertionsToHaveAccessibleErrorMessageOptions
 {
-    /// <summary>
-    /// Cookie list.
-    /// </summary>
-    public ICollection<Cookie> Cookies { get; set; } = new List<Cookie>();
+    public LocatorAssertionsToHaveAccessibleErrorMessageOptions() { }
+
+    public LocatorAssertionsToHaveAccessibleErrorMessageOptions(LocatorAssertionsToHaveAccessibleErrorMessageOptions clone)
+    {
+        if (clone == null)
+        {
+            return;
+        }
+
+        IgnoreCase = clone.IgnoreCase;
+        Timeout = clone.Timeout;
+    }
 
     /// <summary>
-    /// List of local storage per origin.
+    /// <para>
+    /// Whether to perform case-insensitive match. <see cref="ILocatorAssertions.ToHaveAccessibleErrorMessageAsync"/>
+    /// option takes precedence over the corresponding regular expression flag if specified.
+    /// </para>
     /// </summary>
-    public ICollection<OriginStorage> Origins { get; set; } = new List<OriginStorage>();
+    [JsonPropertyName("ignoreCase")]
+    public bool? IgnoreCase { get; set; }
 
-    public bool Equals(StorageState other)
-        => other != null &&
-            Cookies.SequenceEqual(other.Cookies) &&
-            Origins.SequenceEqual(other.Origins);
-
-    public override int GetHashCode()
-        => 412870874 +
-            EqualityComparer<ICollection<Cookie>>.Default.GetHashCode(Cookies) +
-            EqualityComparer<ICollection<OriginStorage>>.Default.GetHashCode(Origins);
-
-    public override bool Equals(object obj) => Equals(obj as StorageState);
+    /// <summary><para>Time to retry the assertion for in milliseconds. Defaults to <c>5000</c>.</para></summary>
+    [JsonPropertyName("timeout")]
+    public float? Timeout { get; set; }
 }
+
+#nullable disable

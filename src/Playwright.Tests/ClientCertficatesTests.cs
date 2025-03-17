@@ -24,9 +24,6 @@
 
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 
 namespace Microsoft.Playwright.Tests;
@@ -105,11 +102,6 @@ public class ClientCertificatesTests : BrowserTestEx
         if (TestConstants.IsWebKit && TestConstants.IsMacOSX)
         {
             Assert.Ignore("WebKit on macOS doesn't proxy localhost requests");
-        }
-        if (TestConstants.IsChromium && TestConstants.IsWindows)
-        {
-            // TODO: Remove after https://github.com/microsoft/playwright/issues/17252 is fixed.
-            Assert.Ignore("Chromium on Windows doesn't proxy localhost requests");
         }
     }
 

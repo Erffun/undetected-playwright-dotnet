@@ -1,13 +1,12 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020 Darío Kondratiuk
- * Modifications copyright (c) Microsoft Corporation.
+ * Copyright (c) Microsoft Corporation.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
@@ -23,11 +22,8 @@
  * SOFTWARE.
  */
 
-using System.Net;
-
-namespace Playwright.Tooling.Extensions;
-
-internal static class StringExtensions
-{
-    public static string ToHtml(this string value) => WebUtility.HtmlEncode(value);
-}
+// We should eventually migrate to the constrained assertions:
+// https://docs.nunit.org/articles/nunit/release-notes/Nunit4.0-MigrationGuide.html#use-global-using-aliases
+global using Assert = NUnit.Framework.Legacy.ClassicAssert;
+global using CollectionAssert = NUnit.Framework.Legacy.CollectionAssert;
+global using StringAssert = NUnit.Framework.Legacy.StringAssert;

@@ -57,13 +57,26 @@ public partial interface IBrowserType
 {
     /// <summary>
     /// <para>
-    /// This method attaches Playwright to an existing browser instance. When connecting
-    /// to another browser launched via <c>BrowserType.launchServer</c> in Node.js, the
-    /// major and minor version needs to match the client version (1.2.3 → is compatible
-    /// with 1.2.x).
+    /// This method attaches Playwright to an existing browser instance created via <c>BrowserType.launchServer</c>
+    /// in Node.js.
+    /// </para>
+    /// <para>
+    /// The major and minor version of the Playwright instance that connects needs to match
+    /// the version of Playwright that launches the browser (1.2.3 → is compatible with
+    /// 1.2.x).
     /// </para>
     /// </summary>
-    /// <param name="wsEndpoint">A browser websocket endpoint to connect to.</param>
+    /// <remarks>
+    /// <para>
+    /// The major and minor version of the Playwright instance that connects needs to match
+    /// the version of Playwright that launches the browser (1.2.3 → is compatible with
+    /// 1.2.x).
+    /// </para>
+    /// </remarks>
+    /// <param name="wsEndpoint">
+    /// A Playwright browser websocket endpoint to connect to. You obtain this endpoint
+    /// via <c>BrowserServer.wsEndpoint</c>.
+    /// </param>
     /// <param name="options">Call options</param>
     Task<IBrowser> ConnectAsync(string wsEndpoint, BrowserTypeConnectOptions? options = default);
 
@@ -73,6 +86,15 @@ public partial interface IBrowserType
     /// DevTools Protocol.
     /// </para>
     /// <para>The default browser context is accessible via <see cref="IBrowser.Contexts"/>.</para>
+    /// <para>
+    /// Connecting over the Chrome DevTools Protocol is only supported for Chromium-based
+    /// browsers.
+    /// </para>
+    /// <para>
+    /// This connection is significantly lower fidelity than the Playwright protocol connection
+    /// via <see cref="IBrowserType.ConnectAsync"/>. If you are experiencing issues or attempting
+    /// to use advanced functionality, you probably want to use <see cref="IBrowserType.ConnectAsync"/>.
+    /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// var browser = await playwright.Chromium.ConnectOverCDPAsync("http://localhost:9222");<br/>
@@ -84,6 +106,12 @@ public partial interface IBrowserType
     /// <para>
     /// Connecting over the Chrome DevTools Protocol is only supported for Chromium-based
     /// browsers.
+    /// </para>
+    /// <para>
+    /// This connection is significantly lower fidelity than the Playwright protocol connection
+    /// via <see cref="IBrowserType.ConnectAsync"/>. If you are experiencing issues or attempting
+    /// to use advanced functionality, you probably want to use <see cref="IBrowserType.ConnectAsync"/>.
+    ///
     /// </para>
     /// </remarks>
     /// <param name="endpointURL">
@@ -100,7 +128,7 @@ public partial interface IBrowserType
     /// <para>Returns the browser instance.</para>
     /// <para>**Usage**</para>
     /// <para>
-    /// You can use <paramref name="ignoreDefaultArgs"/> to filter out <c>--mute-audio</c>
+    /// You can use <see cref="IBrowserType.LaunchAsync"/> to filter out <c>--mute-audio</c>
     /// from default arguments:
     /// </para>
     /// <code>
@@ -111,7 +139,7 @@ public partial interface IBrowserType
     /// <para>
     /// > **Chromium-only** Playwright can also be used to control the Google Chrome or
     /// Microsoft Edge browsers, but it works best with the version of Chromium it is bundled
-    /// with. There is no guarantee it will work with any other version. Use <paramref name="executablePath"/>
+    /// with. There is no guarantee it will work with any other version. Use <see cref="IBrowserType.LaunchAsync"/>
     /// option with extreme caution.
     /// </para>
     /// <para>></para>
@@ -134,7 +162,7 @@ public partial interface IBrowserType
     /// <summary>
     /// <para>Returns the persistent browser context instance.</para>
     /// <para>
-    /// Launches browser that uses persistent storage located at <paramref name="userDataDir"/>
+    /// Launches browser that uses persistent storage located at <see cref="IBrowserType.LaunchPersistentContextAsync"/>
     /// and returns the only context. Closing this context will automatically close the
     /// browser.
     /// </para>
