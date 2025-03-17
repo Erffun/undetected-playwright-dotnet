@@ -43,6 +43,7 @@ public class APIRequestNewContextOptions
         BaseURL = clone.BaseURL;
         ClientCertificates = clone.ClientCertificates;
         ExtraHTTPHeaders = clone.ExtraHTTPHeaders;
+        FailOnStatusCode = clone.FailOnStatusCode;
         HttpCredentials = clone.HttpCredentials;
         IgnoreHTTPSErrors = clone.IgnoreHTTPSErrors;
         Proxy = clone.Proxy;
@@ -90,12 +91,16 @@ public class APIRequestNewContextOptions
     /// <c>origin</c> property should be provided with an exact match to the request origin
     /// that the certificate is valid for.
     /// </para>
-    /// </summary>
-    /// <remarks>
-    /// <para>Using Client Certificates in combination with Proxy Servers is not supported.</para>
     /// <para>
     /// When using WebKit on macOS, accessing <c>localhost</c> will not pick up client certificates.
     /// You can make it work by replacing <c>localhost</c> with <c>local.playwright</c>.
+    /// </para>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When using WebKit on macOS, accessing <c>localhost</c> will not pick up client certificates.
+    /// You can make it work by replacing <c>localhost</c> with <c>local.playwright</c>.
+    ///
     /// </para>
     /// </remarks>
     [JsonPropertyName("clientCertificates")]
@@ -109,6 +114,15 @@ public class APIRequestNewContextOptions
     /// </summary>
     [JsonPropertyName("extraHTTPHeaders")]
     public IEnumerable<KeyValuePair<string, string>>? ExtraHTTPHeaders { get; set; }
+
+    /// <summary>
+    /// <para>
+    /// Whether to throw on response codes other than 2xx and 3xx. By default response object
+    /// is returned for all status codes.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("failOnStatusCode")]
+    public bool? FailOnStatusCode { get; set; }
 
     /// <summary>
     /// <para>

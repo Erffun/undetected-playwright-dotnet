@@ -306,8 +306,7 @@ public class PageWaitForNavigationTests : PageTestEx
         StringAssert.Contains("/frames/one-frame.html", Page.Url);
     }
 
-    [PlaywrightTest]
-    [Timeout(45_000)]
+    [PlaywrightTest(TestConstants.SlowTestTimeout)]
     public async Task ShouldHaveADefaultTimeout()
     {
         await Page.GotoAsync(Server.Prefix + "/frames/one-frame.html");
@@ -315,7 +314,6 @@ public class PageWaitForNavigationTests : PageTestEx
     }
 
     [PlaywrightTest]
-    [Timeout(5_000)]
     public async Task ShouldTakeTimeoutIntoAccount()
     {
         await Page.GotoAsync(Server.Prefix + "/frames/one-frame.html");

@@ -40,11 +40,28 @@ public class LocatorAssertionsToBeCheckedOptions
         }
 
         Checked = clone.Checked;
+        Indeterminate = clone.Indeterminate;
         Timeout = clone.Timeout;
     }
 
+    /// <summary>
+    /// <para>
+    /// Provides state to assert for. Asserts for input to be checked by default. This option
+    /// can't be used when <see cref="ILocatorAssertions.ToBeCheckedAsync"/> is set to true.
+    /// </para>
+    /// </summary>
     [JsonPropertyName("checked")]
     public bool? Checked { get; set; }
+
+    /// <summary>
+    /// <para>
+    /// Asserts that the element is in the indeterminate (mixed) state. Only supported for
+    /// checkboxes and radio buttons. This option can't be true when <see cref="ILocatorAssertions.ToBeCheckedAsync"/>
+    /// is provided.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("indeterminate")]
+    public bool? Indeterminate { get; set; }
 
     /// <summary><para>Time to retry the assertion for in milliseconds. Defaults to <c>5000</c>.</para></summary>
     [JsonPropertyName("timeout")]

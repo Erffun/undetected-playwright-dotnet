@@ -149,6 +149,12 @@ public partial interface IClock
     /// await page.Clock.PauseAtAsync(DateTime.Parse("2020-02-02"));<br/>
     /// await page.Clock.PauseAtAsync("2020-02-02");
     /// </code>
+    /// <para>
+    /// For best results, install the clock before navigating the page and set it to a time
+    /// slightly before the intended test time. This ensures that all timers run normally
+    /// during page loading, preventing the page from getting stuck. Once the page has fully
+    /// loaded, you can safely use <see cref="IClock.PauseAtAsync"/> to pause the clock.
+    /// </para>
     /// </summary>
     /// <param name="time">Time to pause at.</param>
     Task PauseAtAsync(DateTime time);
@@ -168,6 +174,12 @@ public partial interface IClock
     /// await page.Clock.PauseAtAsync(DateTime.Parse("2020-02-02"));<br/>
     /// await page.Clock.PauseAtAsync("2020-02-02");
     /// </code>
+    /// <para>
+    /// For best results, install the clock before navigating the page and set it to a time
+    /// slightly before the intended test time. This ensures that all timers run normally
+    /// during page loading, preventing the page from getting stuck. Once the page has fully
+    /// loaded, you can safely use <see cref="IClock.PauseAtAsync"/> to pause the clock.
+    /// </para>
     /// </summary>
     /// <param name="time">Time to pause at.</param>
     Task PauseAtAsync(string time);
@@ -185,6 +197,12 @@ public partial interface IClock
     /// Makes <c>Date.now</c> and <c>new Date()</c> return fixed fake time at all times,
     /// keeps all the timers running.
     /// </para>
+    /// <para>
+    /// Use this method for simple scenarios where you only need to test with a predefined
+    /// time. For more advanced scenarios, use <see cref="IClock.InstallAsync"/> instead.
+    /// Read docs on <a href="https://playwright.dev/dotnet/docs/clock">clock emulation</a>
+    /// to learn more.
+    /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// await page.Clock.SetFixedTimeAsync(DateTime.Now);<br/>
@@ -200,6 +218,12 @@ public partial interface IClock
     /// Makes <c>Date.now</c> and <c>new Date()</c> return fixed fake time at all times,
     /// keeps all the timers running.
     /// </para>
+    /// <para>
+    /// Use this method for simple scenarios where you only need to test with a predefined
+    /// time. For more advanced scenarios, use <see cref="IClock.InstallAsync"/> instead.
+    /// Read docs on <a href="https://playwright.dev/dotnet/docs/clock">clock emulation</a>
+    /// to learn more.
+    /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// await page.Clock.SetFixedTimeAsync(DateTime.Now);<br/>
@@ -211,7 +235,11 @@ public partial interface IClock
     Task SetFixedTimeAsync(DateTime time);
 
     /// <summary>
-    /// <para>Sets current system time but does not trigger any timers.</para>
+    /// <para>
+    /// Sets system time, but does not trigger any timers. Use this to test how the web
+    /// page reacts to a time shift, for example switching from summer to winter time, or
+    /// changing time zones.
+    /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// await page.Clock.SetSystemTimeAsync(DateTime.Now);<br/>
@@ -223,7 +251,11 @@ public partial interface IClock
     Task SetSystemTimeAsync(string time);
 
     /// <summary>
-    /// <para>Sets current system time but does not trigger any timers.</para>
+    /// <para>
+    /// Sets system time, but does not trigger any timers. Use this to test how the web
+    /// page reacts to a time shift, for example switching from summer to winter time, or
+    /// changing time zones.
+    /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// await page.Clock.SetSystemTimeAsync(DateTime.Now);<br/>

@@ -46,8 +46,19 @@ internal class LocatorAssertions : AssertionsBase, ILocatorAssertions
 
     public Task ToBeCheckedAsync(LocatorAssertionsToBeCheckedOptions options = null)
     {
-        var isChecked = options == null || options.Checked == null || options.Checked == true;
-        return ExpectTrueAsync(isChecked ? "to.be.checked" : "to.be.unchecked", $"Locator expected {(!isChecked ? "not " : string.Empty)}to be checked", ConvertToFrameExpectOptions(options));
+        var expectedValue = new Dictionary<string, object>();
+        if (options?.Checked != null)
+        {
+            expectedValue["checked"] = options.Checked;
+        }
+        if (options?.Indeterminate != null)
+        {
+            expectedValue["indeterminate"] = options.Indeterminate;
+        }
+        var frameExpectedOptions = ConvertToFrameExpectOptions(options) ?? new();
+        frameExpectedOptions.ExpectedValue = ScriptsHelper.SerializedArgument(expectedValue);
+        var checkedString = options?.Indeterminate == true ? "indeterminate" : "checked";
+        return ExpectTrueAsync("to.be.checked", $"Locator expected {(options?.Checked == false ? "not " : string.Empty)}to be {checkedString}", frameExpectedOptions);
     }
 
     public Task ToBeDisabledAsync(LocatorAssertionsToBeDisabledOptions options = null) => ExpectTrueAsync("to.be.disabled", "Locator expected to be disabled", ConvertToFrameExpectOptions(options));
@@ -91,8 +102,7 @@ internal class LocatorAssertions : AssertionsBase, ILocatorAssertions
 
     private Task ExpectTrueAsync(string expression, string message, FrameExpectOptions options)
     {
-        ExpectedTextValue[] expectedText = null;
-        return ExpectImplAsync(expression, expectedText, null, message, options);
+        return ExpectImplAsync(expression, null as ExpectedTextValue[], null, message, options);
     }
 
     public Task ToContainTextAsync(string expected, LocatorAssertionsToContainTextOptions options = null) =>
@@ -139,10 +149,9 @@ internal class LocatorAssertions : AssertionsBase, ILocatorAssertions
 
     public Task ToHaveCountAsync(int count, LocatorAssertionsToHaveCountOptions options = null)
     {
-        ExpectedTextValue[] expectedText = null;
         var commonOptions = ConvertToFrameExpectOptions(options);
         commonOptions.ExpectedNumber = count;
-        return ExpectImplAsync("to.have.count", expectedText, count, "Locator expected to have count", commonOptions);
+        return ExpectImplAsync("to.have.count", null as ExpectedTextValue[], count, "Locator expected to have count", commonOptions);
     }
 
     public Task ToHaveCSSAsync(string name, string value, LocatorAssertionsToHaveCSSOptions options = null) =>
@@ -174,8 +183,7 @@ internal class LocatorAssertions : AssertionsBase, ILocatorAssertions
         var commonOptions = ConvertToFrameExpectOptions(options);
         commonOptions.ExpressionArg = name;
         commonOptions.ExpectedValue = ScriptsHelper.SerializedArgument(value);
-        ExpectedTextValue[] expectedText = null;
-        return ExpectImplAsync("to.have.property", expectedText, value, $"Locator expected to have JavaScript property '{name}'", commonOptions);
+        return ExpectImplAsync("to.have.property", null as ExpectedTextValue[], value, $"Locator expected to have JavaScript property '{name}'", commonOptions);
     }
 
     public Task ToHaveTextAsync(string expected, LocatorAssertionsToHaveTextOptions options = null) =>
@@ -203,17 +211,30 @@ internal class LocatorAssertions : AssertionsBase, ILocatorAssertions
         ExpectImplAsync("to.have.values", values.Select(regex => ExpectedRegex(regex)).ToArray(), values, "Locator expected to have matching regex", ConvertToFrameExpectOptions(options));
 
     public Task ToHaveAccessibleDescriptionAsync(string expected, LocatorAssertionsToHaveAccessibleDescriptionOptions options = null)
-        => ExpectImplAsync("to.have.accessible.description", new ExpectedTextValue() { String = expected, IgnoreCase = options?.IgnoreCase }, expected, "Locator expected to have accessible description", ConvertToFrameExpectOptions(options));
+        => ExpectImplAsync("to.have.accessible.description", new ExpectedTextValue() { String = expected, IgnoreCase = options?.IgnoreCase, NormalizeWhiteSpace = true }, expected, "Locator expected to have accessible description", ConvertToFrameExpectOptions(options));
 
     public Task ToHaveAccessibleDescriptionAsync(Regex expected, LocatorAssertionsToHaveAccessibleDescriptionOptions options = null)
-        => ExpectImplAsync("to.have.accessible.description", ExpectedRegex(expected, new() { IgnoreCase = options?.IgnoreCase }), expected, "Locator expected to have accessible description matching regex", ConvertToFrameExpectOptions(options));
+        => ExpectImplAsync("to.have.accessible.description", ExpectedRegex(expected, new() { IgnoreCase = options?.IgnoreCase, NormalizeWhiteSpace = true }), expected, "Locator expected to have accessible description matching regex", ConvertToFrameExpectOptions(options));
+
+    public Task ToHaveAccessibleErrorMessageAsync(string errorMessage, LocatorAssertionsToHaveAccessibleErrorMessageOptions options = null)
+        => ExpectImplAsync("to.have.accessible.error.message", new ExpectedTextValue() { String = errorMessage, IgnoreCase = options?.IgnoreCase }, errorMessage, "Locator expected to have accessible error message", ConvertToFrameExpectOptions(options));
+
+    public Task ToHaveAccessibleErrorMessageAsync(Regex errorMessage, LocatorAssertionsToHaveAccessibleErrorMessageOptions options = null)
+        => ExpectImplAsync("to.have.accessible.error.message", ExpectedRegex(errorMessage, new() { IgnoreCase = options?.IgnoreCase }), errorMessage, "Locator expected to have accessible error message matching regex", ConvertToFrameExpectOptions(options));
 
     public Task ToHaveAccessibleNameAsync(string expected, LocatorAssertionsToHaveAccessibleNameOptions options = null)
-        => ExpectImplAsync("to.have.accessible.name", new ExpectedTextValue() { String = expected, IgnoreCase = options?.IgnoreCase }, expected, "Locator expected to have accessible name", ConvertToFrameExpectOptions(options));
+        => ExpectImplAsync("to.have.accessible.name", new ExpectedTextValue() { String = expected, IgnoreCase = options?.IgnoreCase, NormalizeWhiteSpace = true }, expected, "Locator expected to have accessible name", ConvertToFrameExpectOptions(options));
 
     public Task ToHaveAccessibleNameAsync(Regex expected, LocatorAssertionsToHaveAccessibleNameOptions options = null)
-        => ExpectImplAsync("to.have.accessible.name", ExpectedRegex(expected, new() { IgnoreCase = options?.IgnoreCase }), expected, "Locator expected to have accessible name matching regex", ConvertToFrameExpectOptions(options));
+        => ExpectImplAsync("to.have.accessible.name", ExpectedRegex(expected, new() { IgnoreCase = options?.IgnoreCase, NormalizeWhiteSpace = true }), expected, "Locator expected to have accessible name matching regex", ConvertToFrameExpectOptions(options));
 
     public Task ToHaveRoleAsync(AriaRole role, LocatorAssertionsToHaveRoleOptions options = null)
         => ExpectImplAsync("to.have.role", new ExpectedTextValue() { String = role.ToString().ToLowerInvariant() }, role, "Locator expected to have role", ConvertToFrameExpectOptions(options));
+
+    public Task ToMatchAriaSnapshotAsync(string expected, LocatorAssertionsToMatchAriaSnapshotOptions options = null)
+    {
+        var commonOptions = ConvertToFrameExpectOptions(options);
+        commonOptions.ExpectedValue = ScriptsHelper.SerializedArgument(expected);
+        return ExpectImplAsync("to.match.aria", null as ExpectedTextValue[], expected, "Locator expected to match Aria snapshot", commonOptions);
+    }
 }

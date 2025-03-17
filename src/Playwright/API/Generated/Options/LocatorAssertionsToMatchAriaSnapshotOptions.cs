@@ -22,25 +22,29 @@
  * SOFTWARE.
  */
 
-using CommandLine;
+using System.Text.Json.Serialization;
 
-namespace Microsoft.Playwright.Tests;
+#nullable enable
 
-/// <summary>
-/// Describes the options for scaffolding the tests.
-/// </summary>
-[Verb("missing-tests", HelpText = "Checks if there are missing tests in the C# variant, compared to the specs.")]
-internal class IdentifyMissingTestsOptions
+namespace Microsoft.Playwright;
+
+public class LocatorAssertionsToMatchAriaSnapshotOptions
 {
-    [Option(Required = true, HelpText = "Location of the PlaywrightSharp.Tests assembly.")]
-    public string TestsAssemblyPath { get; set; }
+    public LocatorAssertionsToMatchAriaSnapshotOptions() { }
 
-    [Option(Required = true, HelpText = "Location of spec files.")]
-    public string SpecFileLocations { get; set; }
+    public LocatorAssertionsToMatchAriaSnapshotOptions(LocatorAssertionsToMatchAriaSnapshotOptions clone)
+    {
+        if (clone == null)
+        {
+            return;
+        }
 
-    [Option(Required = false, HelpText = "The search pattern to use for spec files.", Default = "*.spec.ts")]
-    public string Pattern { get; set; }
+        Timeout = clone.Timeout;
+    }
 
-    [Option(Required = false, Default = true, HelpText = "When True, looks inside subdirectories of specified location as well.")]
-    public bool Recursive { get; set; }
+    /// <summary><para>Time to retry the assertion for in milliseconds. Defaults to <c>5000</c>.</para></summary>
+    [JsonPropertyName("timeout")]
+    public float? Timeout { get; set; }
 }
+
+#nullable disable

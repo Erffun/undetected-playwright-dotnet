@@ -25,7 +25,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Playwright.Helpers;
 
@@ -37,9 +36,7 @@ internal class RouteHandler
 
     private bool _ignoreException;
 
-    public Regex Regex { get; set; }
-
-    public Func<string, bool> Function { get; set; }
+    public URLMatch urlMatcher { get; set; }
 
     public Delegate Handler { get; set; }
 
@@ -47,7 +44,7 @@ internal class RouteHandler
 
     public int HandledCount { get; set; }
 
-    public static Dictionary<string, object> PrepareInterceptionPatterns(List<RouteHandler> handlers)
+    public static List<Dictionary<string, object>> PrepareInterceptionPatterns(List<RouteHandler> handlers)
     {
         bool all = false;
         var patterns = new List<Dictionary<string, object>>();
@@ -56,13 +53,17 @@ internal class RouteHandler
             var pattern = new Dictionary<string, object>();
             patterns.Add(pattern);
 
-            if (handler.Regex != null)
+            if (!string.IsNullOrEmpty(handler.urlMatcher.glob))
             {
-                pattern["regexSource"] = handler.Regex.ToString();
-                pattern["regexFlags"] = handler.Regex.Options.GetInlineFlags();
+                pattern["glob"] = handler.urlMatcher.glob;
+            }
+            else if (handler.urlMatcher.re != null)
+            {
+                pattern["regexSource"] = handler.urlMatcher.re.ToString();
+                pattern["regexFlags"] = handler.urlMatcher.re.Options.GetInlineFlags();
             }
 
-            if (handler.Function != null)
+            if (handler.urlMatcher.func != null)
             {
                 all = true;
             }
@@ -70,16 +71,15 @@ internal class RouteHandler
 
         if (all)
         {
-            var allPattern = new Dictionary<string, object>();
-            allPattern["glob"] = "**/*";
-
-            patterns.Clear();
-            patterns.Add(allPattern);
+            return [
+                new Dictionary<string, object>
+                {
+                    ["glob"] = "**/*",
+                }
+            ];
         }
 
-        var result = new Dictionary<string, object>();
-        result["patterns"] = patterns;
-        return result;
+        return patterns;
     }
 
     public async Task<bool> HandleAsync(Route route)
@@ -125,7 +125,7 @@ internal class RouteHandler
             var tasks = new List<Task>();
             foreach (var activation in _activeInvocations.Keys)
             {
-                if (!activation.Route.DidThrow)
+                if (!activation.Route._didThrow)
                 {
                     tasks.Add(activation.Complete.Task);
                 }
@@ -146,6 +146,8 @@ internal class RouteHandler
         }
         return await handledTask.ConfigureAwait(false);
     }
+
+    internal bool Matches(string normalisedUrl) => urlMatcher.Match(normalisedUrl);
 
     public bool WillExpire()
     {

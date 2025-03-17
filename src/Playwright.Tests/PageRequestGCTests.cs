@@ -6,7 +6,7 @@
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
@@ -22,22 +22,32 @@
  * SOFTWARE.
  */
 
-using CommandLine;
-
 namespace Microsoft.Playwright.Tests;
 
-/// <summary>
-/// Describes the options for scaffolding the tests.
-/// </summary>
-[Verb("scaffold-test", HelpText = "Takes a spec.ts file and scaffolds the C# test.")]
-internal class ScaffoldTestOptions
+public class PageRequestGCTests : PageTestEx
 {
-    [Option(Required = true, HelpText = "Name of the spec file to use.")]
-    public string SpecFile { get; set; }
+    [PlaywrightTest("page-gc.spec.ts", "should work")]
+    public async Task ShouldWork()
+    {
+        await Page.EvaluateAsync(@"() => {
+            globalThis.objectToDestroy = { hello: 'world' };
+            globalThis.weakRef = new WeakRef(globalThis.objectToDestroy);
+        }");
 
-    [Option(Required = false, HelpText = "The location of the scaffold code. If not present, will output to console.")]
-    public string OutputFile { get; set; }
+        await Page.RequestGCAsync();
+        Assert.AreEqual(new Dictionary<string, string>
+        {
+            ["hello"] = "world",
+        }, await Page.EvaluateAsync<object>("() => globalThis.weakRef.deref()"));
 
-    [Option(Required = false, HelpText = "The namespace of the generated class.", Default = "Microsoft.Playwright.Tests")]
-    public string Namespace { get; set; }
+        await Page.RequestGCAsync();
+        Assert.AreEqual(new Dictionary<string, string>
+        {
+            ["hello"] = "world",
+        }, await Page.EvaluateAsync<object>("() => globalThis.weakRef.deref()"));
+
+        await Page.EvaluateAsync("() => globalThis.objectToDestroy = null");
+        await Page.RequestGCAsync();
+        Assert.IsNull(await Page.EvaluateAsync<object>("() => globalThis.weakRef.deref()"));
+    }
 }

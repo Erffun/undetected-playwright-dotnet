@@ -46,6 +46,7 @@ public class BrowserNewPageOptions
         BypassCSP = clone.BypassCSP;
         ClientCertificates = clone.ClientCertificates;
         ColorScheme = clone.ColorScheme;
+        Contrast = clone.Contrast;
         DeviceScaleFactor = clone.DeviceScaleFactor;
         ExtraHTTPHeaders = clone.ExtraHTTPHeaders;
         ForcedColors = clone.ForcedColors;
@@ -131,12 +132,16 @@ public class BrowserNewPageOptions
     /// <c>origin</c> property should be provided with an exact match to the request origin
     /// that the certificate is valid for.
     /// </para>
-    /// </summary>
-    /// <remarks>
-    /// <para>Using Client Certificates in combination with Proxy Servers is not supported.</para>
     /// <para>
     /// When using WebKit on macOS, accessing <c>localhost</c> will not pick up client certificates.
     /// You can make it work by replacing <c>localhost</c> with <c>local.playwright</c>.
+    /// </para>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When using WebKit on macOS, accessing <c>localhost</c> will not pick up client certificates.
+    /// You can make it work by replacing <c>localhost</c> with <c>local.playwright</c>.
+    ///
     /// </para>
     /// </remarks>
     [JsonPropertyName("clientCertificates")]
@@ -144,14 +149,24 @@ public class BrowserNewPageOptions
 
     /// <summary>
     /// <para>
-    /// Emulates <c>'prefers-colors-scheme'</c> media feature, supported values are <c>'light'</c>,
-    /// <c>'dark'</c>, <c>'no-preference'</c>. See <see cref="IPage.EmulateMediaAsync"/>
+    /// Emulates <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-color-scheme">prefers-colors-scheme</a>
+    /// media feature, supported values are <c>'light'</c> and <c>'dark'</c>. See <see cref="IPage.EmulateMediaAsync"/>
     /// for more details. Passing <c>'null'</c> resets emulation to system defaults. Defaults
     /// to <c>'light'</c>.
     /// </para>
     /// </summary>
     [JsonPropertyName("colorScheme")]
     public ColorScheme? ColorScheme { get; set; }
+
+    /// <summary>
+    /// <para>
+    /// Emulates <c>'prefers-contrast'</c> media feature, supported values are <c>'no-preference'</c>,
+    /// <c>'more'</c>. See <see cref="IPage.EmulateMediaAsync"/> for more details. Passing
+    /// <c>'null'</c> resets emulation to system defaults. Defaults to <c>'no-preference'</c>.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("contrast")]
+    public Contrast? Contrast { get; set; }
 
     /// <summary>
     /// <para>
@@ -347,7 +362,7 @@ public class BrowserNewPageOptions
     /// <summary>
     /// <para>
     /// Emulates consistent window screen size available inside web page via <c>window.screen</c>.
-    /// Is only used when the <paramref name="viewport"/> is set.
+    /// Is only used when the <see cref="IBrowser.NewPageAsync"/> is set.
     /// </para>
     /// </summary>
     [JsonPropertyName("screen")]
@@ -416,6 +431,11 @@ public class BrowserNewPageOptions
     /// <c>ViewportSize.NoViewport</c> to disable the consistent viewport emulation. Learn
     /// more about <a href="https://playwright.dev/dotnet/docs/emulation#viewport">viewport
     /// emulation</a>.
+    /// </para>
+    /// <para>
+    /// The <c>ViewportSize.NoViewport</c> value opts out from the default presets, makes
+    /// viewport depend on the host window size defined by the operating system. It makes
+    /// the execution of the tests non-deterministic.
     /// </para>
     /// </summary>
     /// <remarks>

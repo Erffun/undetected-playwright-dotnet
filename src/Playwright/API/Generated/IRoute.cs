@@ -85,11 +85,10 @@ public partial interface IRoute
     /// </code>
     /// <para>**Details**</para>
     /// <para>
-    /// Note that any overrides such as <paramref name="url"/> or <paramref name="headers"/>
-    /// only apply to the request being routed. If this request results in a redirect, overrides
-    /// will not be applied to the new redirected request. If you want to propagate a header
-    /// through redirects, use the combination of <see cref="IRoute.FetchAsync"/> and <see
-    /// cref="IRoute.FulfillAsync"/> instead.
+    /// The <see cref="IRoute.ContinueAsync"/> option applies to both the routed request
+    /// and any redirects it initiates. However, <see cref="IRoute.ContinueAsync"/>, <see
+    /// cref="IRoute.ContinueAsync"/>, and <see cref="IRoute.ContinueAsync"/> only apply
+    /// to the original request and are not carried over to redirected requests.
     /// </para>
     /// <para>
     /// <see cref="IRoute.ContinueAsync"/> will immediately send the request to the network,
@@ -193,8 +192,8 @@ public partial interface IRoute
     /// </code>
     /// <para>**Details**</para>
     /// <para>
-    /// Note that <paramref name="headers"/> option will apply to the fetched request as
-    /// well as any redirects initiated by it. If you want to only apply <paramref name="headers"/>
+    /// Note that <see cref="IRoute.FetchAsync"/> option will apply to the fetched request
+    /// as well as any redirects initiated by it. If you want to only apply <see cref="IRoute.FetchAsync"/>
     /// to the original request, but not to redirects, look into <see cref="IRoute.ContinueAsync"/>
     /// instead.
     /// </para>

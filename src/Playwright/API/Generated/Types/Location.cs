@@ -22,13 +22,27 @@
  * SOFTWARE.
  */
 
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
-namespace Microsoft.Playwright.MSTest;
+#nullable enable
 
-public interface IWorkerService
+namespace Microsoft.Playwright;
+
+public partial class Location
 {
-    public Task BuildAsync(PlaywrightTest parentTest);
-    public Task ResetAsync();
-    public Task DisposeAsync();
+    /// <summary><para></para></summary>
+    [Required]
+    [JsonPropertyName("file")]
+    public string File { get; set; } = default!;
+
+    /// <summary><para></para></summary>
+    [JsonPropertyName("line")]
+    public int? Line { get; set; }
+
+    /// <summary><para></para></summary>
+    [JsonPropertyName("column")]
+    public int? Column { get; set; }
 }
+
+#nullable disable

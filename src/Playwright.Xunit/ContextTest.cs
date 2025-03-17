@@ -24,10 +24,24 @@
 
 using System.Threading.Tasks;
 
-namespace Microsoft.Playwright.NUnit;
+namespace Microsoft.Playwright.Xunit;
 
-public interface IWorkerService
+public class ContextTest : BrowserTest
 {
-    public Task ResetAsync();
-    public Task DisposeAsync();
+    public IBrowserContext Context { get; private set; } = null!;
+
+    public override async Task InitializeAsync()
+    {
+        await base.InitializeAsync().ConfigureAwait(false);
+        Context = await NewContext(ContextOptions()).ConfigureAwait(false);
+    }
+
+    public virtual BrowserNewContextOptions ContextOptions()
+    {
+        return new()
+        {
+            Locale = "en-US",
+            ColorScheme = ColorScheme.Light,
+        };
+    }
 }

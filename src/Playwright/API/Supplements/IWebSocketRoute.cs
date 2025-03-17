@@ -6,7 +6,7 @@
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
@@ -22,36 +22,12 @@
  * SOFTWARE.
  */
 
-using System.Text.Json.Serialization;
+#nullable enable
 
-namespace Microsoft.Playwright.Transport.Protocol;
+namespace Microsoft.Playwright;
 
-internal class SetNetworkCookie
+public partial interface IWebSocketRoute
 {
-    [JsonPropertyName("name")]
-    public string Name { get; set; }
-
-    [JsonPropertyName("value")]
-    public string Value { get; set; }
-
-    [JsonPropertyName("url")]
-    public string Url { get; set; }
-
-    [JsonPropertyName("domain")]
-    public string Domain { get; set; }
-
-    [JsonPropertyName("path")]
-    public string Path { get; set; }
-
-    [JsonPropertyName("expires")]
-    public int? Expires { get; set; }
-
-    [JsonPropertyName("httpOnly")]
-    public bool? HttpOnly { get; set; }
-
-    [JsonPropertyName("secure")]
-    public bool? Secure { get; set; }
-
-    [JsonPropertyName("sameSite")]
-    public string SameSite { get; set; }
+    /// <inheritdoc cref="Send(byte[])" />
+    void Send(string message);
 }

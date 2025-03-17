@@ -22,12 +22,14 @@
  * SOFTWARE.
  */
 
+using System.Reflection;
 using NUnit.Framework.Interfaces;
 using NUnit.Framework.Internal;
 using NUnit.Framework.Internal.Commands;
 
 // Run all tests in sequence
 [assembly: LevelOfParallelism(1)]
+[assembly: Parallelizable(ParallelScope.Fixtures)]
 
 namespace Microsoft.Playwright.Tests;
 
@@ -37,8 +39,20 @@ namespace Microsoft.Playwright.Tests;
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public class PlaywrightTestAttribute : TestAttribute, IWrapSetUpTearDown
 {
+    private readonly int? _timeout;
+
     public PlaywrightTestAttribute()
     {
+    }
+
+    public PlaywrightTestAttribute(int timeout) : this()
+    {
+        _timeout = timeout;
+    }
+
+    public PlaywrightTestAttribute(string fileName, string nameOfTest, int timeout) : this(fileName, nameOfTest)
+    {
+        _timeout = timeout;
     }
 
     /// <summary>
@@ -53,25 +67,9 @@ public class PlaywrightTestAttribute : TestAttribute, IWrapSetUpTearDown
     }
 
     /// <summary>
-    /// Creates a new instance of the attribute.
-    /// </summary>
-    /// <param name="fileName"><see cref="FileName"/></param>
-    /// <param name="describe"><see cref="Describe"/></param>
-    /// <param name="nameOfTest"><see cref="TestName"/></param>
-    public PlaywrightTestAttribute(string fileName, string describe, string nameOfTest) : this(fileName, nameOfTest)
-    {
-        Describe = describe;
-    }
-
-    /// <summary>
     /// The file name origin of the test.
     /// </summary>
     public string FileName { get; }
-
-    /// <summary>
-    /// Returns the trimmed file name.
-    /// </summary>
-    public string TrimmedName => FileName.Substring(0, FileName.IndexOf('.'));
 
     /// <summary>
     /// The name of the test, the decorated code is based on.
@@ -89,7 +87,64 @@ public class PlaywrightTestAttribute : TestAttribute, IWrapSetUpTearDown
     /// <param name="command">the test command</param>
     /// <returns>the wrapped test command</returns>
     public TestCommand Wrap(TestCommand command)
-        => new UnobservedTaskExceptionCommand(command);
+    {
+        command = new TimeoutCommand(command, _timeout ?? TestConstants.DefaultTestTimeout);
+        if (Environment.GetEnvironmentVariable("CI") != null)
+        {
+            command = new RetryCommand(command, 3);
+        }
+        return new UnobservedTaskExceptionCommand(command);
+    }
+
+    // RetryAttribute.RetryCommand only retries AssertionException but we want to retry all exceptions. See
+    // https://github.com/nunit/nunit/issues/1388#issuecomment-2574970271
+    internal class RetryCommand(TestCommand innerCommand, int retryCount) : DelegatingTestCommand(innerCommand)
+    {
+        private readonly int _retryCount = retryCount;
+
+        public override TestResult Execute(TestExecutionContext context)
+        {
+            int tryCount = 0;
+            bool isPassed = false;
+
+            while (tryCount < _retryCount)
+            {
+                try
+                {
+                    innerCommand.Execute(context);
+                    if (context.CurrentResult.ResultState == ResultState.Success || context.CurrentResult.ResultState == ResultState.Skipped || context.CurrentResult.ResultState == ResultState.Ignored)
+                    {
+                        isPassed = true;
+                        break;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Ignore the exception
+                }
+
+                tryCount++;
+                if (tryCount < _retryCount)
+                {
+                    // Reset only if there will be another retry
+                    context.CurrentResult = context.CurrentTest.MakeTestResult();
+                }
+
+            }
+
+            LogFinalOutcome(context.CurrentResult, tryCount == 0, isPassed);
+
+            return context.CurrentResult;
+        }
+
+        private void LogFinalOutcome(TestResult result, bool firstAttempt, bool isPassed)
+        {
+            if (!firstAttempt)
+            {
+                Console.Error.WriteLine($"WARNING: Test {result.FullName} needed {_retryCount} retries and {(isPassed ? "passed" : "failed")}");
+            }
+        }
+    }
 
     /// <summary>
     /// Helper to detect UnobservedTaskExceptions
@@ -139,6 +194,73 @@ public class PlaywrightTestAttribute : TestAttribute, IWrapSetUpTearDown
         private void UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
         {
             _unobservedTaskExceptions.Add(e.Exception);
+        }
+    }
+
+    public class TimeoutCommand : BeforeAndAfterTestCommand
+    {
+        private readonly int _timeout;
+
+        internal TimeoutCommand(TestCommand innerCommand, int timeout) : base(innerCommand)
+        {
+            _timeout = timeout;
+        }
+
+        public override TestResult Execute(TestExecutionContext context)
+        {
+            try
+            {
+                using (new TestExecutionContext.IsolatedContext())
+                {
+                    var testExecution = Task.Run(() => innerCommand.Execute(TestExecutionContext.CurrentContext));
+                    var timedOut = Task.WaitAny([testExecution], _timeout) == -1;
+
+                    if (timedOut)
+                    {
+                        context.CurrentResult.SetResult(
+                            ResultState.Failure,
+                            $"Test exceeded Timeout value of {_timeout}ms");
+                        // When the timeout is reached the TearDown methods are not called. This is a best-effort
+                        // attempt to call them and close the browser / http server.
+                        foreach (var tearDown in GetHackyTearDownMethods(context))
+                        {
+                            tearDown();
+                        }
+                    }
+                    else
+                    {
+                        context.CurrentResult = testExecution.GetAwaiter().GetResult();
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                context.CurrentResult.RecordException(exception, FailureSite.Test);
+            }
+
+            return context.CurrentResult;
+        }
+
+        private Action[] GetHackyTearDownMethods(TestExecutionContext context)
+        {
+            var methods = new List<Action>();
+            foreach (var method in new string[] { "WorkerTeardown", "BrowserTearDown" })
+            {
+                var methodFun = context.CurrentTest.Method.MethodInfo.DeclaringType
+                    .GetMethod(method, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (methodFun != null)
+                {
+                    methods.Add(() =>
+                    {
+                        var maybeTask = methodFun.Invoke(context.TestObject, null);
+                        if (maybeTask is Task task)
+                        {
+                            task.GetAwaiter().GetResult();
+                        }
+                    });
+                }
+            }
+            return methods.ToArray();
         }
     }
 }

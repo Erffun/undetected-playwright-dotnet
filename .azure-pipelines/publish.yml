@@ -18,12 +18,13 @@ variables:
 
 resources:
   repositories:
-  - repository: 1esPipelines
+  - repository: MicroBuildTemplate
     type: git
-    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    name: 1ESPipelineTemplates/MicroBuildTemplate
     ref: refs/tags/release
+
 extends:
-  template: v1/1ES.Official.PipelineTemplate.yml@1esPipelines
+  template: azure-pipelines/MicroBuild.1ES.Official.yml@MicroBuildTemplate
   parameters:
     pool:
       # https://aka.ms/MicroBuild
@@ -38,16 +39,22 @@ extends:
       jobs:
       - job: Build
         displayName: Build
+        templateContext:
+          mb:
+            signing:
+              enabled: true
+              signType: real
+              templateContext:
+          outputs:
+          - output: pipelineArtifact
+            displayName: 'Publish Artifact'
+            targetPath: '$(Build.ArtifactStagingDirectory)'
         steps:
         - task: UseDotNet@2
           displayName: 'Use .NET 8 SDK'
           inputs:
             packageType: sdk
             version: 8.x
-        - task: MicroBuildSigningPlugin@3
-          inputs:
-            signType: real
-            feedSource: 'https://devdiv.pkgs.visualstudio.com/DefaultCollection/_packaging/MicroBuildToolset/nuget/v3/index.json'
         # We need to download the driver first, so we can build
         - task: DotNetCoreCLI@2
           displayName: Download the driver
@@ -70,21 +77,19 @@ extends:
               src/Playwright/Playwright.csproj;
               src/Playwright.NUnit/Playwright.NUnit.csproj;
               src/Playwright.MSTest/Playwright.MSTest.csproj;
+              src/Playwright.Xunit/Playwright.Xunit.csproj;
               src/Playwright.TestAdapter/Playwright.TestAdapter.csproj;
             packDirectory: '$(Build.ArtifactStagingDirectory)/nuget'
             versioningScheme: 'off'
         - task: 1ES.PublishNuget@1
-          displayName: Publish Microsoft.Playwright{NUnit,MSTest,TestAdapter}
+          displayName: Publish Microsoft.Playwright{NUnit,MSTest,Xunit,TestAdapter}
           condition: eq('${{parameters.doRelease}}', true)
           inputs:
             useDotNetTask: false
             # The reason for the 1.* after the package name is that we know the end of the package name in order to not
             # match with e.g. Microsoft.Playwright.CLI when we only want to match Microsoft.Playwright.
-            packagesToPush: |
-              $(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.1.*.nupkg;
-              $(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.MSTest.1.*.nupkg;
-              $(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.NUnit.1.*.nupkg;
-              $(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.TestAdapter.1.*.nupkg;
+            # Semicolon separated as per https://portal.microsofticm.com/imp/v5/incidents/details/467483180/summary
+            packagesToPush: $(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.MSTest.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.Xunit.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.NUnit.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.TestAdapter.1.*.nupkg
             packageParentPath: '$(Build.ArtifactStagingDirectory)'
             nuGetFeedType: external
             publishFeedCredentials: 'NuGet-Playwright'
@@ -97,4 +102,3 @@ extends:
             packageParentPath: '$(Build.ArtifactStagingDirectory)'
             nuGetFeedType: external
             publishFeedCredentials: 'NuGet-Playwright'
-        - task: MicroBuildCleanup@1

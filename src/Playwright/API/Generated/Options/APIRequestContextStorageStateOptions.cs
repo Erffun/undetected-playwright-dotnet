@@ -39,14 +39,20 @@ public class APIRequestContextStorageStateOptions
             return;
         }
 
+        IndexedDB = clone.IndexedDB;
         Path = clone.Path;
     }
 
+    /// <summary><para>Set to <c>true</c> to include IndexedDB in the storage state snapshot.</para></summary>
+    [JsonPropertyName("indexedDB")]
+    public bool? IndexedDB { get; set; }
+
     /// <summary>
     /// <para>
-    /// The file path to save the storage state to. If <paramref name="path"/> is a relative
-    /// path, then it is resolved relative to current working directory. If no path is provided,
-    /// storage state is still returned, but won't be saved to the disk.
+    /// The file path to save the storage state to. If <see cref="IAPIRequestContext.StorageStateAsync"/>
+    /// is a relative path, then it is resolved relative to current working directory. If
+    /// no path is provided, storage state is still returned, but won't be saved to the
+    /// disk.
     /// </para>
     /// </summary>
     [JsonPropertyName("path")]

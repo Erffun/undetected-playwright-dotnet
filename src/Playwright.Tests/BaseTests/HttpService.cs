@@ -36,13 +36,13 @@ public class HttpService : IWorkerService
         var workerIndex = test.WorkerIndex;
         return test.RegisterService("Http", async () =>
         {
-            var assetDir = Path.Combine(TestUtils.FindParentDirectory("Playwright.Tests.TestServer"), "assets");
+            var assetDir = Path.Combine(TestUtils.FindParentDirectory("Playwright.Tests"), "assets");
             var http = new HttpService
             {
-                Server = SimpleServer.Create(8907 + workerIndex * 2, assetDir),
-                HttpsServer = SimpleServer.CreateHttps(8907 + workerIndex * 2 + 1, assetDir)
+                Server = SimpleServer.Create(8907 + workerIndex * 4, assetDir),
+                HttpsServer = SimpleServer.CreateHttps(8907 + workerIndex * 4 + 1, assetDir)
             };
-            await Task.WhenAll(http.Server.StartAsync(), http.HttpsServer.StartAsync());
+            await Task.WhenAll(http.Server.StartAsync(TestContext.CurrentContext.CancellationToken), http.HttpsServer.StartAsync(TestContext.CurrentContext.CancellationToken));
             return http;
         });
     }

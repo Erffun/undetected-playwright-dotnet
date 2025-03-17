@@ -51,6 +51,7 @@ internal class APIRequest : IAPIRequest
             ["proxy"] = options?.Proxy,
             ["timeout"] = options?.Timeout,
             ["clientCertificates"] = Browser.ToClientCertificatesProtocol(options?.ClientCertificates),
+            ["failOnStatusCode"] = options?.FailOnStatusCode,
         };
         string storageState = options?.StorageState;
         if (!string.IsNullOrEmpty(options?.StorageStatePath))
@@ -64,7 +65,7 @@ internal class APIRequest : IAPIRequest
         }
         if (!string.IsNullOrEmpty(storageState))
         {
-            args.Add("storageState", JsonSerializer.Deserialize<StorageState>(storageState, Helpers.JsonExtensions.DefaultJsonSerializerOptions));
+            args.Add("storageState", JsonSerializer.Deserialize<object>(storageState, Helpers.JsonExtensions.DefaultJsonSerializerOptions));
         }
 
         var context = await _playwright.SendMessageToServerAsync<APIRequestContext>(
