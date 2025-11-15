@@ -27,8 +27,6 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -344,6 +342,20 @@ public partial interface ILocator
     Task DblClickAsync(LocatorDblClickOptions? options = default);
 
     /// <summary>
+    /// <para>
+    /// Describes the locator, description is used in the trace viewer and reports. Returns
+    /// the locator pointing to the same element.
+    /// </para>
+    /// <para>**Usage**</para>
+    /// <code>
+    /// var button = Page.GetByTestId("btn-sub").Describe("Subscribe button");<br/>
+    /// await button.ClickAsync();
+    /// </code>
+    /// </summary>
+    /// <param name="description">Locator description.</param>
+    ILocator Describe(string description);
+
+    /// <summary>
     /// <para>Programmatically dispatch an event on the matching element.</para>
     /// <para>**Usage**</para>
     /// <code>await locator.DispatchEventAsync("click");</code>
@@ -476,6 +488,11 @@ public partial interface ILocator
     /// </para>
     /// <para>If <see cref="ILocator.EvaluateAsync"/> throws or rejects, this method throws.</para>
     /// <para>**Usage**</para>
+    /// <para>Passing argument to <see cref="ILocator.EvaluateAsync"/>:</para>
+    /// <code>
+    /// var result = await page.GetByTestId("myId").EvaluateAsync&lt;string&gt;("(element, [x, y]) =&gt; element.textContent + ' ' + x * y)", new[] { 7, 8 });<br/>
+    /// Console.WriteLine(result); // prints "myId text 56"
+    /// </code>
     /// </summary>
     /// <param name="expression">
     /// JavaScript expression to be evaluated in the browser context. If the expression
@@ -1900,5 +1917,3 @@ public partial interface ILocator
     /// <param name="options">Call options</param>
     Task WaitForAsync(LocatorWaitForOptions? options = default);
 }
-
-#nullable disable

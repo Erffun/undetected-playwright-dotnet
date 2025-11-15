@@ -28,6 +28,6 @@ namespace Microsoft.Playwright.Transport.Protocol;
 
 internal class AndroidSelectorHasChild
 {
-    [JsonPropertyName("selector")]
-    public AndroidSelector Selector { get; set; }
+    [JsonPropertyName("androidSelector")]
+    public AndroidSelector AndroidSelector { get; set; } = null!;
 }

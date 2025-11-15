@@ -17,9 +17,13 @@
     <ReleaseVersion>0.0.0</ReleaseVersion>
     <BuildFromSource>True</BuildFromSource>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
-    <NoWarn>1701;1702;CS0067;1734;NU5110;NU5111</NoWarn>
+    <NoWarn>1701;1702;CS0067;1734;NU5110;NU5111;CP0006</NoWarn>
     <AssemblyName>Undetected.Playwright</AssemblyName>
     <NoWin32Manifest>true</NoWin32Manifest>
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>1.52.0</PackageValidationBaselineVersion>
+    <Nullable>enable</Nullable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Erffun</Authors>
     <RepositoryUrl>https://github.com/Erffun/undetected-playwright-dotnet.git</RepositoryUrl>
     <PackageProjectUrl>https://github.com/Erffun/undetected-playwright-dotnet</PackageProjectUrl>
@@ -55,6 +59,7 @@
     <None Include="build\**" Pack="true" PackagePath="buildTransitive" />
     <None Include="build\**" Pack="true" PackagePath="build" />
     <None Include="..\Common\icon.png" Pack="true" Visible="false" PackagePath="icon.png" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="README.md" />
   </ItemGroup>
   <Target Name="EnsurePrerequisitsRan" BeforeTargets="GetCopyToOutputDirectoryItems">
     <Error Text="Playwright prerequisites are missing. Ensure you've ran `dotnet run --project ./src/tools/Playwright.Tooling/Playwright.Tooling.csproj -- download-drivers --basepath .`" Condition="!Exists('$(MSBuildProjectDirectory)\.drivers')" />

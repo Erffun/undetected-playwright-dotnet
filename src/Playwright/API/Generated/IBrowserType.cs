@@ -24,8 +24,6 @@
 
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -176,6 +174,12 @@ public partial interface IBrowserType
     /// seen at <c>chrome://version</c>.
     /// Note that browsers do not allow launching multiple instances with the same User
     /// Data Directory.
+    /// Chromium/Chrome: Due to recent Chrome policy changes, automating the default Chrome
+    /// user profile is not supported. Pointing <c>userDataDir</c> to Chrome's main "User
+    /// Data" directory (the profile used for your regular browsing) may result in pages
+    /// not loading or the browser exiting. Create and use a separate directory (for example,
+    /// an empty folder) as your automation profile instead. See https://developer.chrome.com/blog/remote-debugging-port
+    /// for details.
     /// </param>
     /// <param name="options">Call options</param>
     Task<IBrowserContext> LaunchPersistentContextAsync(string userDataDir, BrowserTypeLaunchPersistentContextOptions? options = default);
@@ -183,5 +187,3 @@ public partial interface IBrowserType
     /// <summary><para>Returns browser name. For example: <c>'chromium'</c>, <c>'webkit'</c> or <c>'firefox'</c>.</para></summary>
     string Name { get; }
 }
-
-#nullable disable

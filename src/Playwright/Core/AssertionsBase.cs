@@ -33,39 +33,40 @@ using Microsoft.Playwright.Transport;
 using Microsoft.Playwright.Transport.Protocol;
 
 [assembly: InternalsVisibleTo("Microsoft.Playwright.MSTest, PublicKey=0024000004800000940000000602000000240000525341310004000001000100059a04ca5ca77c9b4eb2addd1afe3f8464b20ee6aefe73b8c23c0e6ca278d1a378b33382e7e18d4aa8300dd22d81f146e528d88368f73a288e5b8157da9710fe6f9fa9911fb786193f983408c5ebae0b1ba5d1d00111af2816f5db55871db03d7536f4a7a6c5152d630c1e1886b1a0fb68ba5e7f64a7f24ac372090889be2ffb")]
+[assembly: InternalsVisibleTo("Microsoft.Playwright.MSTest.v4, PublicKey=0024000004800000940000000602000000240000525341310004000001000100059a04ca5ca77c9b4eb2addd1afe3f8464b20ee6aefe73b8c23c0e6ca278d1a378b33382e7e18d4aa8300dd22d81f146e528d88368f73a288e5b8157da9710fe6f9fa9911fb786193f983408c5ebae0b1ba5d1d00111af2816f5db55871db03d7536f4a7a6c5152d630c1e1886b1a0fb68ba5e7f64a7f24ac372090889be2ffb")]
 [assembly: InternalsVisibleTo("Microsoft.Playwright.NUnit, PublicKey=0024000004800000940000000602000000240000525341310004000001000100059a04ca5ca77c9b4eb2addd1afe3f8464b20ee6aefe73b8c23c0e6ca278d1a378b33382e7e18d4aa8300dd22d81f146e528d88368f73a288e5b8157da9710fe6f9fa9911fb786193f983408c5ebae0b1ba5d1d00111af2816f5db55871db03d7536f4a7a6c5152d630c1e1886b1a0fb68ba5e7f64a7f24ac372090889be2ffb")]
 [assembly: InternalsVisibleTo("Microsoft.Playwright.Xunit, PublicKey=0024000004800000940000000602000000240000525341310004000001000100059a04ca5ca77c9b4eb2addd1afe3f8464b20ee6aefe73b8c23c0e6ca278d1a378b33382e7e18d4aa8300dd22d81f146e528d88368f73a288e5b8157da9710fe6f9fa9911fb786193f983408c5ebae0b1ba5d1d00111af2816f5db55871db03d7536f4a7a6c5152d630c1e1886b1a0fb68ba5e7f64a7f24ac372090889be2ffb")]
+[assembly: InternalsVisibleTo("Microsoft.Playwright.Xunit.v3, PublicKey=0024000004800000940000000602000000240000525341310004000001000100059a04ca5ca77c9b4eb2addd1afe3f8464b20ee6aefe73b8c23c0e6ca278d1a378b33382e7e18d4aa8300dd22d81f146e528d88368f73a288e5b8157da9710fe6f9fa9911fb786193f983408c5ebae0b1ba5d1d00111af2816f5db55871db03d7536f4a7a6c5152d630c1e1886b1a0fb68ba5e7f64a7f24ac372090889be2ffb")]
 
 namespace Microsoft.Playwright.Core;
 
-internal class AssertionsBase
+internal abstract class AssertionsBase
 {
     private static float _defaultTimeout = 5_000;
 
-    public AssertionsBase(ILocator actual, bool isNot)
+    public AssertionsBase(bool isNot)
     {
-        ActualLocator = (Locator)actual;
         IsNot = isNot;
     }
 
     protected bool IsNot { get; }
 
-    protected Locator ActualLocator { get; }
+    protected abstract Task<FrameExpectResult> CallExpectAsync(string expression, FrameExpectOptions expectOptions, string title);
 
-    protected async Task ExpectImplAsync(string expression, ExpectedTextValue textValue, object expected, string message, FrameExpectOptions options)
+    protected async Task ExpectImplAsync(string expression, ExpectedTextValue textValue, object expected, string message, string title, FrameExpectOptions options)
     {
-        await ExpectImplAsync(expression, new ExpectedTextValue[] { textValue }, expected, message, options).ConfigureAwait(false);
+        await ExpectImplAsync(expression, new ExpectedTextValue[] { textValue }, expected, message, title, options).ConfigureAwait(false);
     }
 
-    protected async Task ExpectImplAsync(string expression, ExpectedTextValue[] expectedText, object expected, string message, FrameExpectOptions options)
+    protected async Task ExpectImplAsync(string expression, ExpectedTextValue[]? expectedText, object? expected, string message, string title, FrameExpectOptions options)
     {
         options ??= new();
         options.ExpectedText = expectedText;
         options.IsNot = IsNot;
-        await ExpectImplAsync(expression, options, expected, message).ConfigureAwait(false);
+        await ExpectImplAsync(expression, options, expected, message, title).ConfigureAwait(false);
     }
 
-    protected async Task ExpectImplAsync(string expression, FrameExpectOptions expectOptions, object expected, string message)
+    protected async Task ExpectImplAsync(string expression, FrameExpectOptions expectOptions, object? expected, string message, string title)
     {
         if (expectOptions.Timeout == null)
         {
@@ -75,11 +76,15 @@ internal class AssertionsBase
         {
             message = message.Replace("expected to", "expected not to");
         }
-        var result = await ActualLocator.ExpectAsync(expression, expectOptions).ConfigureAwait(false);
+        var result = await CallExpectAsync(expression, expectOptions, title).ConfigureAwait(false);
         if (result.Matches == IsNot)
         {
             var actual = result.Received;
             var log = Connection.FormatCallLog(result.Log);
+            if (result.ErrorMessage != null)
+            {
+                message += "\n" + result.ErrorMessage;
+            }
             if (expected == null)
             {
                 throw new PlaywrightException($"{message} {log}");
@@ -88,7 +93,7 @@ internal class AssertionsBase
         }
     }
 
-    protected ExpectedTextValue ExpectedRegex(Regex pattern, ExpectedTextValue options = null)
+    protected ExpectedTextValue ExpectedRegex(Regex pattern, ExpectedTextValue? options = null)
     {
         if (pattern == null)
         {
@@ -101,7 +106,7 @@ internal class AssertionsBase
         return textValue;
     }
 
-    protected FrameExpectOptions ConvertToFrameExpectOptions(object source) => ClassUtils.Clone<FrameExpectOptions>(source);
+    protected FrameExpectOptions ConvertToFrameExpectOptions(object? source) => ClassUtils.Clone<FrameExpectOptions>(source);
 
     private string FormatValue(object value)
     {

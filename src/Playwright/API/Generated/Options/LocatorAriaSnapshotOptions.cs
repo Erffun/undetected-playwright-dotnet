@@ -24,8 +24,6 @@
 
 using System.Text.Json.Serialization;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 public class LocatorAriaSnapshotOptions
@@ -39,18 +37,8 @@ public class LocatorAriaSnapshotOptions
             return;
         }
 
-        Ref = clone.Ref;
         Timeout = clone.Timeout;
     }
-
-    /// <summary>
-    /// <para>
-    /// Generate symbolic reference for each element. One can use <c>aria-ref=&lt;ref&gt;</c>
-    /// locator immediately after capturing the snapshot to perform actions on the element.
-    /// </para>
-    /// </summary>
-    [JsonPropertyName("ref")]
-    public bool? Ref { get; set; }
 
     /// <summary>
     /// <para>
@@ -62,5 +50,3 @@ public class LocatorAriaSnapshotOptions
     [JsonPropertyName("timeout")]
     public float? Timeout { get; set; }
 }
-
-#nullable disable

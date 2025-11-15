@@ -24,14 +24,18 @@
 
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
 /// <para>
 /// The Mouse class operates in main-frame CSS pixels relative to the top-left corner
 /// of the viewport.
+/// </para>
+/// <para>
+/// If you want to debug where the mouse moved, you can use the <a href="https://playwright.dev/dotnet/docs/trace-viewer-intro">Trace
+/// viewer</a> or <a href="https://playwright.dev/dotnet/docs/running-tests">Playwright
+/// Inspector</a>. A red dot showing the location of the mouse will be shown for every
+/// mouse action.
 /// </para>
 /// <para>Every <c>page</c> object has its own Mouse, accessible with <see cref="IPage.Mouse"/>.</para>
 /// <code>
@@ -44,6 +48,14 @@ namespace Microsoft.Playwright;
 /// await Page.Mouse.UpAsync();
 /// </code>
 /// </summary>
+/// <remarks>
+/// <para>
+/// If you want to debug where the mouse moved, you can use the <a href="https://playwright.dev/dotnet/docs/trace-viewer-intro">Trace
+/// viewer</a> or <a href="https://playwright.dev/dotnet/docs/running-tests">Playwright
+/// Inspector</a>. A red dot showing the location of the mouse will be shown for every
+/// mouse action.
+/// </para>
+/// </remarks>
 public partial interface IMouse
 {
     /// <summary>
@@ -103,5 +115,3 @@ public partial interface IMouse
     /// <param name="deltaY">Pixels to scroll vertically.</param>
     Task WheelAsync(float deltaX, float deltaY);
 }
-
-#nullable disable

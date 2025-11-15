@@ -34,13 +34,13 @@ public class URLMatch
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions#escaping
     private static readonly char[] _escapeGlobChars = new[] { '$', '^', '+', '.', '*', '(', ')', '|', '\\', '?', '{', '}', '[', ']' };
 
-    public Regex re { get; set; }
+    public Regex? re { get; set; }
 
-    public Func<string, bool> func { get; set; }
+    public Func<string, bool>? func { get; set; }
 
-    public string glob { get; set; }
+    public string? glob { get; set; }
 
-    public string baseURL { get; set; }
+    public string? baseURL { get; set; }
 
     public bool isWebSocketUrl { get; set; }
 
@@ -49,7 +49,7 @@ public class URLMatch
         return MatchImpl(url, re, func, glob, baseURL, isWebSocketUrl);
     }
 
-    private static bool MatchImpl(string url, Regex re, Func<string, bool> func, string glob, string baseURL, bool isWebSocketUrl)
+    private static bool MatchImpl(string url, Regex? re, Func<string, bool>? func, string? glob, string? baseURL, bool isWebSocketUrl)
     {
         if (re != null)
         {
@@ -67,7 +67,7 @@ public class URLMatch
             {
                 return true;
             }
-            string match = ResolveGlobToRegexPattern(baseURL, glob, isWebSocketUrl);
+            var match = ResolveGlobToRegexPattern(baseURL, glob, isWebSocketUrl);
             return new Regex(match).IsMatch(url);
         }
 
@@ -86,15 +86,11 @@ public class URLMatch
         return builder.Uri;
     }
 
-    internal static string ConstructURLBasedOnBaseURL(string baseUrl, string url)
+    internal static string ConstructURLBasedOnBaseURL(string? baseUrl, string url)
     {
         try
         {
-            if (string.IsNullOrEmpty(baseUrl))
-            {
-                return FixupTrailingSlash(new Uri(url, UriKind.Absolute)).ToString();
-            }
-            return FixupTrailingSlash(new Uri(new Uri(baseUrl), new Uri(url, UriKind.RelativeOrAbsolute))).ToString();
+            return ResolveBaseURL(baseUrl, url).Resolved;
         }
         catch
         {
@@ -102,7 +98,7 @@ public class URLMatch
         }
     }
 
-    public static string GlobToRegexPattern(string glob)
+    public static string? GlobToRegexPattern(string glob)
     {
         if (string.IsNullOrEmpty(glob))
         {
@@ -123,22 +119,15 @@ public class URLMatch
             }
             if (c == '*')
             {
-                char? beforeDeep = i == 0 ? null : glob[i - 1];
                 int starCount = 1;
                 while (i < glob.Length - 1 && glob[i + 1] == '*')
                 {
                     starCount++;
                     i++;
                 }
-
-                char? afterDeep = i >= glob.Length - 1 ? null : glob[i + 1];
-                var isDeep = starCount > 1 &&
-                    (beforeDeep == '/' || beforeDeep == null) &&
-                    (afterDeep == '/' || afterDeep == null);
-                if (isDeep)
+                if (starCount > 1)
                 {
-                    tokens.Add("((?:[^/]*(?:\\/|$))*)");
-                    i++;
+                    tokens.Add("(.*)");
                 }
                 else
                 {
@@ -176,9 +165,9 @@ public class URLMatch
         return string.Concat(tokens.ToArray());
     }
 
-    internal static string ToWebSocketBaseURL(string baseURL)
+    internal static string? ToWebSocketBaseURL(string? baseURL)
     {
-        if (string.IsNullOrEmpty(baseURL))
+        if (string.IsNullOrEmpty(baseURL) || baseURL == null)
         {
             return baseURL;
         }
@@ -194,7 +183,7 @@ public class URLMatch
         return baseURL;
     }
 
-    internal static string ResolveGlobToRegexPattern(string baseURL, string glob, bool isWebSocketUrl)
+    internal static string? ResolveGlobToRegexPattern(string? baseURL, string glob, bool isWebSocketUrl)
     {
         if (isWebSocketUrl)
         {
@@ -204,7 +193,7 @@ public class URLMatch
         return GlobToRegexPattern(glob);
     }
 
-    internal static string ResolveGlobBase(string baseURL, string match)
+    internal static string ResolveGlobBase(string? baseURL, string match)
     {
         // NOTE: Node.js version uses "$" in mapped tokens, but C# cannot swallow that.
         // So we use "playwright-pw-" instead. It is also important that this string is lowercase.
@@ -224,6 +213,12 @@ public class URLMatch
 
             // Escaped `\\?` behaves the same as `?` in our glob patterns.
             match = match.Replace("\\\\?", "?");
+            // Special case about: URLs as they are not relative to baseURL
+            if (match.StartsWith("about:") || match.StartsWith("data:") || match.StartsWith("chrome:") ||
+                match.StartsWith("edge:") || match.StartsWith("file:"))
+            {
+                return match;
+            }
             // Glob symbols may be escaped in the URL and some of them such as ? affect resolution,
             // so we replace them with safe components first.
             var relativePath = string.Join("/", match.Split('/').Select((token, index) =>
@@ -248,17 +243,46 @@ public class URLMatch
                 return newPrefix + newSuffix;
             }));
 
-            string resolved = ConstructURLBasedOnBaseURL(baseURL, relativePath);
+            var (resolved, caseInsensitivePart) = ResolveBaseURL(baseURL, relativePath);
             foreach (var kvp in tokenMap)
             {
-                resolved = resolved.Replace(kvp.Key, kvp.Value);
+                var normalize = caseInsensitivePart?.Contains(kvp.Key) == true;
+                resolved = resolved.Replace(kvp.Key, normalize ? kvp.Value.ToLowerInvariant() : kvp.Value);
             }
             match = resolved;
         }
         return match;
     }
 
-    public bool Equals(string globMatch, Regex reMatch, Func<string, bool> funcMatch, string baseURL, bool isWebSocketUrl)
+    private static (string Resolved, string? CaseInsensitivePart) ResolveBaseURL(string? baseUrl, string url)
+    {
+        try
+        {
+            Uri uri;
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                uri = FixupTrailingSlash(new Uri(url, UriKind.Absolute));
+            }
+            else
+            {
+                uri = FixupTrailingSlash(new Uri(new Uri(baseUrl), new Uri(url, UriKind.RelativeOrAbsolute)));
+            }
+            var resolved = uri.ToString();
+            // Schema and domain are case-insensitive.
+            var caseInsensitivePrefix = $"{uri.Scheme}://{uri.Host}";
+            if (!uri.IsDefaultPort)
+            {
+                caseInsensitivePrefix += $":{uri.Port}";
+            }
+            return (resolved, caseInsensitivePrefix);
+        }
+        catch
+        {
+            return (url, null);
+        }
+    }
+
+    public bool Equals(string? globMatch, Regex? reMatch, Func<string, bool>? funcMatch, string? baseURL, bool isWebSocketUrl)
     {
         return this.re?.ToString() == reMatch?.ToString() && this.re?.Options == reMatch?.Options
             && this.func == funcMatch

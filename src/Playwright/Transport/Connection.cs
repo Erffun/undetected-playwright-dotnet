@@ -23,7 +23,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -49,9 +48,9 @@ internal class Connection : IDisposable
     private readonly TaskQueue _queue = new();
     private int _tracingCount;
     private int _lastId;
-    private Exception _closedError;
+    private Exception? _closedError;
 
-    public Connection(LocalUtils localUtils = null)
+    public Connection(LocalUtils? localUtils = null)
     {
         _rootObject = new(null, this, string.Empty);
         LocalUtils = localUtils;
@@ -73,23 +72,23 @@ internal class Connection : IDisposable
     /// <inheritdoc cref="IDisposable.Dispose"/>
     ~Connection() => Dispose(false);
 
-    internal event EventHandler<Exception> Close;
+    internal event EventHandler<Exception>? Close;
 
     public ConcurrentDictionary<string, ChannelOwner> Objects { get; } = new();
 
-    internal AsyncLocal<List<ApiZone>> ApiZone { get; } = new();
+    internal AsyncLocal<List<ApiZone?>> ApiZone { get; } = new();
 
     internal bool IsRemote { get; set; }
 
-    internal LocalUtils LocalUtils { get; private set; }
+    internal LocalUtils? LocalUtils { get; private set; }
 
-    internal Func<object, bool, Task> OnMessage { get; set; }
+    internal Func<object, bool, Task> OnMessage { get; set; } = null!;
 
     internal JsonSerializerOptions DefaultJsonSerializerOptions { get; }
 
     internal JsonSerializerOptions DefaultJsonSerializerOptionsKeepNulls { get; }
 
-    internal static string FormatCallLog(string[] log)
+    internal static string FormatCallLog(string[]? log)
     {
         if (log == null)
         {
@@ -121,22 +120,22 @@ internal class Connection : IDisposable
     }
 
     internal Task<JsonElement?> SendMessageToServerAsync(
-        ChannelOwner @object,
+        ChannelOwner? @object,
         string method,
-        Dictionary<string, object> args = null,
+        Dictionary<string, object?>? args = null,
         bool keepNulls = false)
         => SendMessageToServerAsync<JsonElement?>(@object, method, args, keepNulls);
 
     internal Task<T> SendMessageToServerAsync<T>(
-        ChannelOwner @object,
+        ChannelOwner? @object,
         string method,
-        Dictionary<string, object> args = null,
-        bool keepNulls = false) => WrapApiCallAsync(() => InnerSendMessageToServerAsync<T>(@object, method, args, keepNulls), @object?._isInternalType ?? false);
+        Dictionary<string, object?>? args = null,
+        bool keepNulls = false) => WrapApiCallAsync(() => InnerSendMessageToServerAsync<T>(@object, method, args, keepNulls), false, null);
 
     private async Task<T> InnerSendMessageToServerAsync<T>(
-        ChannelOwner @object,
+        ChannelOwner? @object,
         string method,
-        Dictionary<string, object> dictionary = null,
+        Dictionary<string, object?>? dictionary = null,
         bool keepNulls = false)
     {
         if (_closedError != null)
@@ -150,10 +149,7 @@ internal class Connection : IDisposable
 
         int id = Interlocked.Increment(ref _lastId);
         var tcs = new TaskCompletionSource<JsonElement?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var callback = new ConnectionCallback
-        {
-            TaskCompletionSource = tcs,
-        };
+        var callback = new ConnectionCallback(tcs);
 
         _callbacks.TryAdd(id, callback);
 
@@ -162,17 +158,17 @@ internal class Connection : IDisposable
         {
             sanitizedArgs = dictionary
                 .Where(f => f.Value != null)
-                .ToDictionary(f => f.Key, f => f.Value);
+                .ToDictionary(f => f.Key, f => f.Value) as Dictionary<string, object>;
         }
-        var (apiName, frames) = (ApiZone.Value[0].ApiName, ApiZone.Value[0].Frames);
-        var metadata = new Dictionary<string, object>
+        var (title, isInternal, frames) = (ApiZone.Value[0]!.Title, ApiZone.Value[0]!.Internal, ApiZone.Value[0]!.Frames);
+        var metadata = new Dictionary<string, object?>
         {
-            ["internal"] = string.IsNullOrEmpty(apiName),
+            ["internal"] = isInternal,
             ["wallTime"] = DateTimeOffset.Now.ToUnixTimeMilliseconds(),
         };
-        if (!string.IsNullOrEmpty(apiName))
+        if (!string.IsNullOrEmpty(title))
         {
-            metadata["apiName"] = apiName;
+            metadata["title"] = title;
         }
         if (frames.Count > 0)
         {
@@ -184,23 +180,22 @@ internal class Connection : IDisposable
             };
         }
 
-        if (_tracingCount > 0 && frames.Count > 0 && @object.Guid != "localUtils")
+        if (_tracingCount > 0 && frames.Count > 0 && @object?.Guid != "localUtils")
         {
-            LocalUtils.AddStackToTracingNoReply(frames, id);
+            LocalUtils?.AddStackToTracingNoReply(frames, id);
         }
 
         await _queue.EnqueueAsync(() =>
         {
-            return OnMessage(
-                new MessageRequest
-                {
-                    Id = id,
-                    Guid = @object == null ? string.Empty : @object.Guid,
-                    Method = method,
-                    Params = sanitizedArgs,
-                    Metadata = metadata,
-                },
-                keepNulls);
+            var message = new Dictionary<string, object?>
+            {
+                ["id"] = id,
+                ["guid"] = @object?.Guid ?? string.Empty,
+                ["method"] = method,
+                ["params"] = sanitizedArgs,
+                ["metadata"] = metadata,
+            };
+            return OnMessage(message, keepNulls);
         }).ConfigureAwait(false);
 
         var result = await tcs.Task.ConfigureAwait(false);
@@ -211,7 +206,7 @@ internal class Connection : IDisposable
         }
         else if (result == null)
         {
-            return default;
+            return default!;
         }
         else if (typeof(ChannelOwner).IsAssignableFrom(typeof(T)) || typeof(ChannelOwner[]).IsAssignableFrom(typeof(T)))
         {
@@ -219,7 +214,7 @@ internal class Connection : IDisposable
 
             return enumerate.Any()
                 ? enumerate.FirstOrDefault().Value.ToObject<T>(DefaultJsonSerializerOptions)
-                : default;
+                : default!;
         }
         else
         {
@@ -237,13 +232,13 @@ internal class Connection : IDisposable
 
     internal async Task<PlaywrightImpl> InitializePlaywrightAsync()
     {
-        var args = new Dictionary<string, object>
+        var args = new Dictionary<string, object?>
         {
             ["sdkLanguage"] = "csharp",
         };
 
         var jsonElement = await SendMessageToServerAsync(null, "initialize", args).ConfigureAwait(false);
-        return jsonElement.GetObject<PlaywrightImpl>("playwright", this);
+        return jsonElement.GetObject<PlaywrightImpl>("playwright", this)!;
     }
 
     internal void Dispatch(PlaywrightServerMessage message)
@@ -276,8 +271,7 @@ internal class Connection : IDisposable
         {
             if (message.Method == "__create__")
             {
-                var createObjectInfo = message.Params.Value.ToObject<CreateObjectInfo>(DefaultJsonSerializerOptions);
-                CreateRemoteObject(message.Guid, createObjectInfo.Type, createObjectInfo.Guid, createObjectInfo.Initializer);
+                CreateRemoteObject(message.Guid, message.Params.GetProperty("type").ToObject<ChannelOwnerType>(), message.Params.GetProperty("guid").ToString(), message.Params.GetProperty("initializer"));
                 return;
             }
 
@@ -289,7 +283,7 @@ internal class Connection : IDisposable
 
             if (message.Method == "__adopt__")
             {
-                var childGuid = message.Params.Value.GetProperty("guid").GetString();
+                var childGuid = message.Params.GetProperty("guid").GetString()!;
                 Objects.TryGetValue(childGuid, out var child);
                 if (child == null)
                 {
@@ -301,7 +295,7 @@ internal class Connection : IDisposable
 
             if (message.Method == "__dispose__")
             {
-                @object.DisposeOwner(message.Params.Value.TryGetProperty("reason", out var reason) ? reason.GetString() : null);
+                @object.DisposeOwner(message.Params.TryGetProperty("reason", out var reason) == true ? reason.GetString() : null);
                 return;
             }
             @object.OnMessage(message.Method, message.Params);
@@ -312,85 +306,82 @@ internal class Connection : IDisposable
         }
     }
 
-    private ChannelOwner CreateRemoteObject(string parentGuid, ChannelOwnerType type, string guid, JsonElement? initializer)
+    private ChannelOwner? CreateRemoteObject(string parentGuid, ChannelOwnerType? type, string guid, JsonElement? initializer)
     {
-        ChannelOwner result = null;
+        ChannelOwner? result = null;
         var parent = string.IsNullOrEmpty(parentGuid) ? _rootObject : Objects[parentGuid];
 
         switch (type)
         {
             case ChannelOwnerType.APIRequestContext:
-                result = new APIRequestContext(parent, guid, initializer?.ToObject<APIRequestContextInitializer>(DefaultJsonSerializerOptions));
+                result = new APIRequestContext(parent, guid, initializer?.ToObject<APIRequestContextInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.Artifact:
-                result = new Artifact(parent, guid, initializer?.ToObject<ArtifactInitializer>(DefaultJsonSerializerOptions));
+                result = new Artifact(parent, guid, initializer?.ToObject<ArtifactInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.BindingCall:
-                result = new BindingCall(parent, guid, initializer?.ToObject<BindingCallInitializer>(DefaultJsonSerializerOptions));
+                result = new BindingCall(parent, guid, initializer?.ToObject<BindingCallInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.Playwright:
-                result = new PlaywrightImpl(parent, guid, initializer?.ToObject<PlaywrightInitializer>(DefaultJsonSerializerOptions));
+                result = new PlaywrightImpl(parent, guid, initializer?.ToObject<PlaywrightInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.Browser:
-                var browserInitializer = initializer?.ToObject<BrowserInitializer>(DefaultJsonSerializerOptions);
+                var browserInitializer = initializer?.ToObject<BrowserInitializer>(DefaultJsonSerializerOptions)!;
                 result = new Browser(parent, guid, browserInitializer);
                 break;
             case ChannelOwnerType.BrowserType:
-                var browserTypeInitializer = initializer?.ToObject<BrowserTypeInitializer>(DefaultJsonSerializerOptions);
+                var browserTypeInitializer = initializer?.ToObject<BrowserTypeInitializer>(DefaultJsonSerializerOptions)!;
                 result = new Core.BrowserType(parent, guid, browserTypeInitializer);
                 break;
             case ChannelOwnerType.BrowserContext:
-                var browserContextInitializer = initializer?.ToObject<BrowserContextInitializer>(DefaultJsonSerializerOptions);
+                var browserContextInitializer = initializer?.ToObject<BrowserContextInitializer>(DefaultJsonSerializerOptions)!;
                 result = new BrowserContext(parent, guid, browserContextInitializer);
                 break;
             case ChannelOwnerType.CDPSession:
                 result = new CDPSession(parent, guid);
                 break;
             case ChannelOwnerType.Dialog:
-                result = new Dialog(parent, guid, initializer?.ToObject<DialogInitializer>(DefaultJsonSerializerOptions));
+                result = new Dialog(parent, guid, initializer?.ToObject<DialogInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.ElementHandle:
-                result = new ElementHandle(parent, guid, initializer?.ToObject<ElementHandleInitializer>(DefaultJsonSerializerOptions));
+                result = new ElementHandle(parent, guid, initializer?.ToObject<ElementHandleInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.Frame:
-                result = new Frame(parent, guid, initializer?.ToObject<FrameInitializer>(DefaultJsonSerializerOptions));
+                result = new Frame(parent, guid, initializer?.ToObject<FrameInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.JSHandle:
-                result = new JSHandle(parent, guid, initializer?.ToObject<JSHandleInitializer>(DefaultJsonSerializerOptions));
+                result = new JSHandle(parent, guid, initializer?.ToObject<JSHandleInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.JsonPipe:
-                result = new JsonPipe(parent, guid, initializer?.ToObject<JsonPipeInitializer>(DefaultJsonSerializerOptions));
+                result = new JsonPipe(parent, guid, initializer?.ToObject<JsonPipeInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.LocalUtils:
-                result = new LocalUtils(parent, guid, initializer?.ToObject<LocalUtilsInitializer>(DefaultJsonSerializerOptions));
+                result = new LocalUtils(parent, guid, initializer?.ToObject<LocalUtilsInitializer>(DefaultJsonSerializerOptions)!);
                 if (LocalUtils == null)
                 {
                     LocalUtils = result as LocalUtils;
                 }
                 break;
             case ChannelOwnerType.Page:
-                result = new Page(parent, guid, initializer?.ToObject<PageInitializer>(DefaultJsonSerializerOptions));
+                result = new Page(parent, guid, initializer?.ToObject<PageInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.Request:
-                result = new Request(parent, guid, initializer?.ToObject<RequestInitializer>(DefaultJsonSerializerOptions));
+                result = new Request(parent, guid, initializer?.ToObject<RequestInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.Response:
-                result = new Response(parent, guid, initializer?.ToObject<ResponseInitializer>(DefaultJsonSerializerOptions));
+                result = new Response(parent, guid, initializer?.ToObject<ResponseInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.Route:
-                result = new Route(parent, guid, initializer?.ToObject<RouteInitializer>(DefaultJsonSerializerOptions));
+                result = new Route(parent, guid, initializer?.ToObject<RouteInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.Worker:
-                result = new Worker(parent, guid, initializer?.ToObject<WorkerInitializer>(DefaultJsonSerializerOptions));
+                result = new Worker(parent, guid, initializer?.ToObject<WorkerInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.WebSocket:
-                result = new WebSocket(parent, guid, initializer?.ToObject<WebSocketInitializer>(DefaultJsonSerializerOptions));
+                result = new WebSocket(parent, guid, initializer?.ToObject<WebSocketInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.WebSocketRoute:
-                result = new WebSocketRoute(parent, guid, initializer?.ToObject<WebSocketRouteInitializer>(DefaultJsonSerializerOptions));
-                break;
-            case ChannelOwnerType.Selectors:
-                result = new Selectors(parent, guid);
+                result = new WebSocketRoute(parent, guid, initializer?.ToObject<WebSocketRouteInitializer>(DefaultJsonSerializerOptions)!);
                 break;
             case ChannelOwnerType.SocksSupport:
                 result = new SocksSupport(parent, guid);
@@ -415,15 +406,15 @@ internal class Connection : IDisposable
         return result;
     }
 
-    internal void DoClose(Exception cause = null)
+    internal void DoClose(Exception? cause = null)
         => DoCloseImpl(cause != null ? new TargetClosedException(cause.Message, cause) : new TargetClosedException());
 
-    internal void DoClose(string cause = null)
-        => DoCloseImpl(!string.IsNullOrEmpty(cause) ? new TargetClosedException(cause) : new TargetClosedException());
+    internal void DoClose(string? cause = null)
+        => DoCloseImpl(!string.IsNullOrEmpty(cause) && cause != null ? new TargetClosedException(cause) : new TargetClosedException());
 
-    internal void DoCloseImpl(Exception closeError = null)
+    internal void DoCloseImpl(Exception closeError)
     {
-        this._closedError = closeError;
+        _closedError = closeError;
         foreach (var callback in _callbacks)
         {
             callback.Value.TaskCompletionSource.TrySetException(closeError.InnerException ?? closeError);
@@ -463,7 +454,7 @@ internal class Connection : IDisposable
         }
 
         _queue.Dispose();
-        Close.Invoke(this, new TargetClosedException("Connection disposed"));
+        Close?.Invoke(this, new TargetClosedException("Connection disposed"));
     }
 
     internal static void TraceMessage(string logLevel, byte[] rawMessage)
@@ -484,7 +475,7 @@ internal class Connection : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    internal async Task<T> WrapApiCallAsync<T>(Func<Task<T>> action, bool isInternal = false)
+    internal async Task<T> WrapApiCallAsync<T>(Func<Task<T>> action, bool isInternal = false, string? title = null)
     {
         EnsureApiZoneExists();
         if (ApiZone.Value[0] != null)
@@ -493,45 +484,18 @@ internal class Connection : IDisposable
         }
         var st = new StackTrace(true);
         var stack = new List<Protocol.StackFrame>();
-        var lastInternalApiName = string.Empty;
-        var apiName = string.Empty;
-        var apiBoundaryReached = false;
         for (int i = 0; i < st.FrameCount; ++i)
         {
             var sf = st.GetFrame(i);
             string fileName = sf.GetFileName();
-            if (IsPlaywrightInternalNamespace(sf.GetMethod().ReflectedType?.Namespace))
-            {
-                string methodName = $"{sf?.GetMethod()?.DeclaringType?.Name}.{sf?.GetMethod()?.Name}";
-                if (methodName.Contains("WrapApiBoundaryAsync"))
-                {
-                    apiBoundaryReached = true;
-                }
-                var hasCleanMethodName = !methodName.StartsWith("<", StringComparison.InvariantCultureIgnoreCase);
-                if (hasCleanMethodName)
-                {
-                    lastInternalApiName = methodName;
-                }
-            }
-            else if (!string.IsNullOrEmpty(fileName))
+            if (!IsPlaywrightInternalNamespace(sf.GetMethod().ReflectedType?.Namespace) && !string.IsNullOrEmpty(fileName))
             {
                 stack.Add(new() { File = fileName, Line = sf.GetFileLineNumber(), Column = sf.GetFileColumnNumber() });
-                if (!string.IsNullOrEmpty(lastInternalApiName) && !apiBoundaryReached)
-                {
-                    apiName = lastInternalApiName;
-                }
             }
-        }
-        if (string.IsNullOrEmpty(apiName))
-        {
-            apiName = lastInternalApiName;
         }
         try
         {
-            if (!string.IsNullOrEmpty(apiName))
-            {
-                ApiZone.Value[0] = new() { ApiName = isInternal ? null : apiName, Frames = stack };
-            }
+            ApiZone.Value[0] = new() { Internal = isInternal, Title = title, Frames = stack };
             return await action().ConfigureAwait(false);
         }
         finally
@@ -540,37 +504,23 @@ internal class Connection : IDisposable
         }
     }
 
-    internal Task WrapApiCallAsync(Func<Task> action, bool isInternal = false)
+    internal Task WrapApiCallAsync(Func<Task> action, bool isInternal = false, string? title = null)
         => WrapApiCallAsync(
             async () =>
             {
                 await action().ConfigureAwait(false);
                 return true;
             },
-            isInternal);
+            isInternal,
+            title);
 
-    private static bool IsPlaywrightInternalNamespace(string namespaceName)
+    private static bool IsPlaywrightInternalNamespace(string? namespaceName)
     {
         return namespaceName != null &&
             (namespaceName == "Microsoft.Playwright" ||
             namespaceName.StartsWith("Microsoft.Playwright.Core", StringComparison.InvariantCultureIgnoreCase) ||
             namespaceName.StartsWith("Microsoft.Playwright.Transport", StringComparison.InvariantCultureIgnoreCase) ||
             namespaceName.StartsWith("Microsoft.Playwright.Helpers", StringComparison.InvariantCultureIgnoreCase));
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)] // This method is also a stacktrace marker.
-    internal async Task WrapApiBoundaryAsync(Func<Task> action)
-    {
-        EnsureApiZoneExists();
-        try
-        {
-            ApiZone.Value.Insert(0, null);
-            await action().ConfigureAwait(false);
-        }
-        finally
-        {
-            ApiZone.Value.RemoveAt(0);
-        }
     }
 
     private void EnsureApiZoneExists()
@@ -584,5 +534,10 @@ internal class Connection : IDisposable
 
 internal class ConnectionCallback
 {
-    public TaskCompletionSource<JsonElement?> TaskCompletionSource { get; set; }
+    public ConnectionCallback(TaskCompletionSource<JsonElement?> taskCompletionSource)
+    {
+        TaskCompletionSource = taskCompletionSource;
+    }
+
+    internal TaskCompletionSource<JsonElement?> TaskCompletionSource { get; }
 }

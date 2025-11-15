@@ -21,11 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Playwright.Helpers;
@@ -37,15 +35,14 @@ internal class ChannelOwner
     internal readonly Connection _connection;
 
     internal bool _wasCollected;
-    internal bool _isInternalType;
 
-    internal ChannelOwner(ChannelOwner parent, string guid) : this(parent, null, guid)
+    internal ChannelOwner(ChannelOwner parent, string guid) : this(parent, parent._connection, guid)
     {
     }
 
-    internal ChannelOwner(ChannelOwner parent, Connection connection, string guid)
+    internal ChannelOwner(ChannelOwner? parent, Connection connection, string guid)
     {
-        _connection = parent?._connection ?? connection;
+        _connection = connection;
 
         Guid = guid;
         Parent = parent;
@@ -61,20 +58,20 @@ internal class ChannelOwner
 
     internal string Guid { get; set; }
 
-    internal ChannelOwner Parent { get; set; }
+    internal ChannelOwner? Parent { get; set; }
 
-    internal virtual void OnMessage(string method, JsonElement? serverParams)
+    internal virtual void OnMessage(string method, JsonElement serverParams)
     {
     }
 
     internal void Adopt(ChannelOwner child)
     {
-        child.Parent.Objects.TryRemove(child.Guid, out _);
+        child.Parent!.Objects.TryRemove(child.Guid, out _);
         Objects[child.Guid] = child;
         child.Parent = this;
     }
 
-    internal void DisposeOwner(string reason)
+    internal void DisposeOwner(string? reason)
     {
         Parent?.Objects?.TryRemove(Guid, out var _);
         _connection?.Objects.TryRemove(Guid, out var _);
@@ -87,16 +84,11 @@ internal class ChannelOwner
         Objects.Clear();
     }
 
-    public Task<T> WrapApiCallAsync<T>(Func<Task<T>> action, bool isInternal = false) => _connection.WrapApiCallAsync(action, isInternal);
+    public Task<T> WrapApiCallAsync<T>(Func<Task<T>> action, bool isInternal = false, string? title = null) => _connection.WrapApiCallAsync(action, isInternal, title);
 
-    public Task WrapApiCallAsync(Func<Task> action, bool isInternal = false) => _connection.WrapApiCallAsync(action, isInternal);
+    public Task WrapApiCallAsync(Func<Task> action, bool isInternal = false, string? title = null) => _connection.WrapApiCallAsync(action, isInternal, title);
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public Task WrapApiBoundaryAsync(Func<Task> action) => _connection.WrapApiBoundaryAsync(action);
-
-    internal void MarkAsInternalType() => _isInternalType = true;
-
-    internal EventHandler<T> UpdateEventHandler<T>(string eventName, EventHandler<T> handlers, EventHandler<T> handler, bool add)
+    internal EventHandler<T>? UpdateEventHandler<T>(string eventName, EventHandler<T>? handlers, EventHandler<T>? handler, bool add)
     {
         if (add)
         {
@@ -124,7 +116,7 @@ internal class ChannelOwner
             () => _connection.SendMessageToServerAsync(
             this,
             "updateSubscription",
-            new Dictionary<string, object>
+            new Dictionary<string, object?>
             {
                 ["event"] = eventName,
                 ["enabled"] = enabled,
@@ -134,12 +126,12 @@ internal class ChannelOwner
 
     internal Task<JsonElement?> SendMessageToServerAsync(
         string method,
-        Dictionary<string, object> args = null,
+        Dictionary<string, object?>? args = null,
         bool keepNulls = false)
         => SendMessageToServerAsync<JsonElement?>(method, args, keepNulls);
 
     internal Task<T> SendMessageToServerAsync<T>(
         string method,
-        Dictionary<string, object> args = null,
+        Dictionary<string, object?>? args = null,
         bool keepNulls = false) => _connection.SendMessageToServerAsync<T>(this, method, args, keepNulls);
 }

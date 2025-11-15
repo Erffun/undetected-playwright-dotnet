@@ -27,12 +27,13 @@ namespace Microsoft.Playwright.Core;
 internal class TimeoutSettings
 {
     private const int DefaultTimeoutInMilliseconds = 30_000;
+    private const int DefaultLaunchTimeoutInMilliseconds = 180_000;
 
-    private readonly TimeoutSettings _parent;
+    private readonly TimeoutSettings? _parent;
     private float? _defaultTimeout;
     private float? _defaultNavigationTimeout;
 
-    public TimeoutSettings(TimeoutSettings parent = null)
+    public TimeoutSettings(TimeoutSettings? parent = null)
     {
         _parent = parent;
     }
@@ -40,6 +41,16 @@ internal class TimeoutSettings
     internal float? DefaultNavigationTimeout => _defaultNavigationTimeout;
 
     internal float? DefaultTimeout => _defaultTimeout;
+
+    public static float LaunchTimeout(float? timeout)
+    {
+        if (timeout.HasValue)
+        {
+            return timeout.Value;
+        }
+
+        return DefaultLaunchTimeoutInMilliseconds;
+    }
 
     public void SetDefaultTimeout(float? timeout)
     {

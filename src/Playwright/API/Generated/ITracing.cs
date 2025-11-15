@@ -24,8 +24,6 @@
 
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -33,6 +31,17 @@ namespace Microsoft.Playwright;
 /// API for collecting and saving Playwright traces. Playwright traces can be opened
 /// in <a href="https://playwright.dev/dotnet/docs/trace-viewer">Trace Viewer</a> after
 /// Playwright script runs.
+/// </para>
+/// <para>
+/// You probably want to <a href="https://playwright.dev/docs/api/class-testoptions#test-options-trace">enable
+/// tracing in your config file</a> instead of using <c>context.tracing</c>.
+/// </para>
+/// <para>
+/// The <c>context.tracing</c> API captures browser operations and network activity,
+/// but it doesn't record test assertions (like <c>expect</c> calls). We recommend <a
+/// href="https://playwright.dev/docs/api/class-testoptions#test-options-trace">enabling
+/// tracing through Playwright Test configuration</a>, which includes those assertions
+/// and provides a more complete trace for debugging test failures.
 /// </para>
 /// <para>
 /// Start recording a trace before performing actions. At the end, stop tracing and
@@ -55,10 +64,31 @@ namespace Microsoft.Playwright;
 /// });
 /// </code>
 /// </summary>
+/// <remarks>
+/// <para>
+/// You probably want to <a href="https://playwright.dev/docs/api/class-testoptions#test-options-trace">enable
+/// tracing in your config file</a> instead of using <c>context.tracing</c>.  The <c>context.tracing</c>
+/// API captures browser operations and network activity, but it doesn't record test
+/// assertions (like <c>expect</c> calls). We recommend <a href="https://playwright.dev/docs/api/class-testoptions#test-options-trace">enabling
+/// tracing through Playwright Test configuration</a>, which includes those assertions
+/// and provides a more complete trace for debugging test failures.
+/// </para>
+/// </remarks>
 public partial interface ITracing
 {
     /// <summary>
     /// <para>Start tracing.</para>
+    /// <para>
+    /// You probably want to <a href="https://playwright.dev/docs/api/class-testoptions#test-options-trace">enable
+    /// tracing in your config file</a> instead of using <c>Tracing.start</c>.
+    /// </para>
+    /// <para>
+    /// The <c>context.tracing</c> API captures browser operations and network activity,
+    /// but it doesn't record test assertions (like <c>expect</c> calls). We recommend <a
+    /// href="https://playwright.dev/docs/api/class-testoptions#test-options-trace">enabling
+    /// tracing through Playwright Test configuration</a>, which includes those assertions
+    /// and provides a more complete trace for debugging test failures.
+    /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// using var playwright = await Playwright.CreateAsync();<br/>
@@ -77,6 +107,16 @@ public partial interface ITracing
     /// });
     /// </code>
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// You probably want to <a href="https://playwright.dev/docs/api/class-testoptions#test-options-trace">enable
+    /// tracing in your config file</a> instead of using <c>Tracing.start</c>.  The <c>context.tracing</c>
+    /// API captures browser operations and network activity, but it doesn't record test
+    /// assertions (like <c>expect</c> calls). We recommend <a href="https://playwright.dev/docs/api/class-testoptions#test-options-trace">enabling
+    /// tracing through Playwright Test configuration</a>, which includes those assertions
+    /// and provides a more complete trace for debugging test failures.
+    /// </para>
+    /// </remarks>
     /// <param name="options">Call options</param>
     Task StartAsync(TracingStartOptions? options = default);
 
@@ -157,5 +197,3 @@ public partial interface ITracing
     /// <param name="options">Call options</param>
     Task StopChunkAsync(TracingStopChunkOptions? options = default);
 }
-
-#nullable disable

@@ -201,7 +201,7 @@ public class UnrouteBehaviorTests : PageTestEx
             routePromise.SetResult(true);
             await routeBarrier.Task;
             await route.FallbackAsync();
-        };
+        }
 
         await Page.RouteAsync(new Regex(".*"), handler);
         var navigationPromise = Page.GotoAsync(Server.EmptyPage);
@@ -249,7 +249,7 @@ public class UnrouteBehaviorTests : PageTestEx
             routePromise.SetResult(true);
             await routeBarrier.Task;
             await route.FallbackAsync().ConfigureAwait(false);
-        };
+        }
 
         await Page.RouteAsync(new Regex(".*"), handler);
         var navigationPromise = Page.GotoAsync(Server.EmptyPage);
@@ -285,7 +285,7 @@ public class UnrouteBehaviorTests : PageTestEx
             routePromise.SetResult(true);
             await routeBarrier.Task;
             throw new Exception("Handler error");
-        };
+        }
 
         await Page.RouteAsync(new Regex(".*"), handler);
         var navigationPromise = Page.GotoAsync(Server.EmptyPage);
@@ -379,5 +379,41 @@ public class UnrouteBehaviorTests : PageTestEx
         var route = await routePromise.Task;
         await Page.CloseAsync();
         await route.FulfillAsync(new() { Status = (int)HttpStatusCode.OK });
+    }
+
+    [PlaywrightTest("unroute-behavior.spec.ts", "should not continue requests in flight (page)")]
+    public async Task ShouldNotContinueRequestsInFlightPage()
+    {
+        await Page.GotoAsync(Server.EmptyPage);
+
+        var routePromise = new TaskCompletionSource<IRoute>();
+        await Page.RouteAsync(new Regex(".*"), async (route) =>
+        {
+            routePromise.SetResult(route);
+            await Page.WaitForTimeoutAsync(3000);
+            await route.FulfillAsync(new() { Status = (int)HttpStatusCode.OK });
+        });
+
+        Page.EvaluateAsync("() => fetch('/')").IgnoreException();
+        await routePromise.Task;
+        await Page.UnrouteAllAsync(new() { Behavior = UnrouteBehavior.Wait });
+    }
+
+    [PlaywrightTest("unroute-behavior.spec.ts", "should not continue requests in flight (context)")]
+    public async Task ShouldNotContinueRequestsInFlightContext()
+    {
+        await Page.GotoAsync(Server.EmptyPage);
+
+        var routePromise = new TaskCompletionSource<IRoute>();
+        await Context.RouteAsync(new Regex(".*"), async (route) =>
+        {
+            routePromise.SetResult(route);
+            await Page.WaitForTimeoutAsync(3000);
+            await route.FulfillAsync(new() { Status = (int)HttpStatusCode.OK });
+        });
+
+        Page.EvaluateAsync("() => fetch('/')").IgnoreException();
+        await routePromise.Task;
+        await Context.UnrouteAllAsync(new() { Behavior = UnrouteBehavior.Wait });
     }
 }

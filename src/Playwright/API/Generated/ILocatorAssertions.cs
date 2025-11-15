@@ -26,8 +26,6 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -232,7 +230,7 @@ public partial interface ILocatorAssertions
     /// matched against the corresponding class in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToContainClassAsync(new string[]{"inactive", "active", "inactive"});
     /// </code>
     /// </summary>
@@ -263,7 +261,7 @@ public partial interface ILocatorAssertions
     /// matched against the corresponding class in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToContainClassAsync(new string[]{"inactive", "active", "inactive"});
     /// </code>
     /// </summary>
@@ -588,7 +586,7 @@ public partial interface ILocatorAssertions
     /// is matched against the corresponding string or regular expression in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToHaveClassAsync(new string[]{"component", "component selected", "component"});
     /// </code>
     /// </summary>
@@ -614,7 +612,7 @@ public partial interface ILocatorAssertions
     /// is matched against the corresponding string or regular expression in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToHaveClassAsync(new string[]{"component", "component selected", "component"});
     /// </code>
     /// </summary>
@@ -640,7 +638,7 @@ public partial interface ILocatorAssertions
     /// is matched against the corresponding string or regular expression in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToHaveClassAsync(new string[]{"component", "component selected", "component"});
     /// </code>
     /// </summary>
@@ -666,7 +664,7 @@ public partial interface ILocatorAssertions
     /// is matched against the corresponding string or regular expression in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToHaveClassAsync(new string[]{"component", "component selected", "component"});
     /// </code>
     /// </summary>
@@ -1056,5 +1054,3 @@ public partial interface ILocatorAssertions
     /// <param name="options">Call options</param>
     Task ToMatchAriaSnapshotAsync(string expected, LocatorAssertionsToMatchAriaSnapshotOptions? options = default);
 }
-
-#nullable disable

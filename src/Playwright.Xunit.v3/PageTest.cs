@@ -1,8 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020 Darío Kondratiuk
- * Modifications copyright (c) Microsoft Corporation.
+ * Copyright (c) Microsoft Corporation.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,17 +22,17 @@
  * SOFTWARE.
  */
 
-namespace Microsoft.Playwright.Transport;
+using System.Threading.Tasks;
 
-internal class MessageRequest
+namespace Microsoft.Playwright.Xunit.v3;
+
+public class PageTest : ContextTest
 {
-    public int Id { get; set; }
+    public IPage Page { get; private set; } = null!;
 
-    public string Guid { get; set; }
-
-    public string Method { get; set; }
-
-    public object Params { get; set; }
-
-    public object Metadata { get; set; }
+    public override async ValueTask InitializeAsync()
+    {
+        await base.InitializeAsync().ConfigureAwait(false);
+        Page = await Context.NewPageAsync().ConfigureAwait(false);
+    }
 }

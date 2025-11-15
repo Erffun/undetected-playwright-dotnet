@@ -88,6 +88,17 @@ public class InterceptionTests : PageTestEx
         Assert.True(URLMatches("http://playwright.dev", "http://playwright.dev/?x=y", "?x=y"));
         Assert.True(URLMatches("http://playwright.dev/foo/", "http://playwright.dev/foo/bar?x=y", "./bar?x=y"));
 
+        // Case insensitive matching
+        Assert.True(URLMatches(null, "https://playwright.dev/fooBAR", "HtTpS://pLaYwRiGhT.dEv/fooBAR"));
+        Assert.True(URLMatches("http://ignored", "https://playwright.dev/fooBAR", "HtTpS://pLaYwRiGhT.dEv/fooBAR"));
+        // Path and search query are case-sensitive
+        Assert.False(URLMatches(null, "https://playwright.dev/foobar", "https://playwright.dev/fooBAR"));
+        Assert.False(URLMatches(null, "https://playwright.dev/foobar?a=b", "https://playwright.dev/foobar?A=B"));
+
+        Assert.True(URLMatches(null, "https://localhost:3000/?a=b", "**/?a=b"));
+        Assert.True(URLMatches(null, "https://localhost:3000/?a=b", "**?a=b"));
+        Assert.True(URLMatches(null, "https://localhost:3000/?a=b", "**=b"));
+
         // This is not supported, we treat ? as a query separator.
         Assert.That("http://localhost:8080/Simple/path.js", Does.Not.Match(GlobToRegex("http://localhost:8080/?imple/path.js")));
         Assert.False(URLMatches(null, "http://playwright.dev/", "http://playwright.?ev"));
@@ -100,6 +111,13 @@ public class InterceptionTests : PageTestEx
         Assert.True(URLMatches("http://playwright.dev/foo", "http://playwright.dev/foo?bar", "\\\\?bar"));
         Assert.True(URLMatches("http://first.host/", "http://second.host/foo", "**/foo"));
         Assert.True(URLMatches("http://playwright.dev/", "http://localhost/", "*//localhost/"));
+
+        // Should work with baseURL and various non-http schemes.
+        Assert.True(URLMatches("http://playwright.dev/", "about:blank", "about:blank"));
+        Assert.False(URLMatches("http://playwright.dev/", "about:blank", "http://playwright.dev/"));
+        Assert.True(URLMatches("http://playwright.dev/", "about:blank", "about:*"));
+        Assert.True(URLMatches("http://playwright.dev/", "data:text/html,", "data:*/*"));
+        Assert.True(URLMatches("http://playwright.dev/", "file://path/to/file", "file://**"));
     }
 
     [PlaywrightTest("interception.spec.ts", "should intercept by glob")]

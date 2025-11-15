@@ -23,6 +23,7 @@
  */
 
 using System;
+using System.Text.Json;
 using System.Xml;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Adapter;
@@ -35,14 +36,29 @@ public class PlaywrightSettingsProvider : ISettingsProvider
 {
     private static PlaywrightSettingsXml? _settings = null!;
 
+    public static void LoadViaEnvIfNeeded()
+    {
+        if (_settings == null)
+        {
+            var settings = Environment.GetEnvironmentVariable("PW_INTERNAL_ADAPTER_SETTINGS");
+            if (!string.IsNullOrEmpty(settings))
+            {
+                _settings = JsonSerializer.Deserialize<PlaywrightSettingsXml>(settings);
+            }
+            else
+            {
+                _settings = new PlaywrightSettingsXml();
+            }
+        }
+    }
+
     public static string BrowserName
     {
         get
         {
             var browserFromEnv = Environment.GetEnvironmentVariable("BROWSER")?.ToLowerInvariant();
-            // GitHub Codespaces sets the BROWSER environment variable, ignore it if its bogus.
-            var ignoreValueFromEnv = Environment.GetEnvironmentVariable("CODESPACES") == "true" && browserFromEnv!.StartsWith("/vscode/");
-            if (!string.IsNullOrEmpty(browserFromEnv) && !ignoreValueFromEnv)
+            // GitHub Codespaces and DevContainers sets the BROWSER environment variable, ignore it if its bogus.
+            if (!string.IsNullOrEmpty(browserFromEnv) && !browserFromEnv!.StartsWith("/vscode/"))
             {
                 ValidateBrowserName(browserFromEnv!, "'BROWSER' environment variable", "\nTry to remove 'BROWSER' environment variable for using default browser");
                 return browserFromEnv!;
@@ -103,5 +119,10 @@ public class PlaywrightSettingsProvider : ISettingsProvider
     }
 
     public void Load(XmlReader reader)
-        => _settings = new PlaywrightSettingsXml(reader);
+    {
+        // NOTE: ISettingsProvider::Load is not called when there are no runsettings (either file or passed via command line).
+        _settings = new PlaywrightSettingsXml(reader);
+        Environment.SetEnvironmentVariable("PW_INTERNAL_ADAPTER_SETTINGS", JsonSerializer.Serialize(_settings));
+    }
 }
+

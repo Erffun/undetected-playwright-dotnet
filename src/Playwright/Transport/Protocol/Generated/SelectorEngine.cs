@@ -22,8 +22,18 @@
  * SOFTWARE.
  */
 
+using System.Text.Json.Serialization;
+
 namespace Microsoft.Playwright.Transport.Protocol;
 
-internal class SelectorsInitializer
+internal class SelectorEngine
 {
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = null!;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = null!;
+
+    [JsonPropertyName("contentScript")]
+    public bool? ContentScript { get; set; }
 }
