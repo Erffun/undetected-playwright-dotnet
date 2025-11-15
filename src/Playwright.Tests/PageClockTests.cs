@@ -462,8 +462,7 @@ public class PageClockTests : PageTestEx
             await Page.Clock.InstallAsync(new() { TimeDate = DateTimeOffset.FromUnixTimeMilliseconds(0).UtcDateTime });
             await Page.GotoAsync("data:text/html,");
             await Page.Clock.PauseAtAsync(DateTimeOffset.FromUnixTimeMilliseconds(1000).UtcDateTime);
-            await Page.WaitForTimeoutAsync(1000);
-            await Page.Clock.ResumeAsync();
+            await Page.WaitForTimeoutAsync(1111);
             var now = await Page.EvaluateAsync<long>("Date.now()");
             Assert.GreaterOrEqual(now, 0);
             Assert.LessOrEqual(now, 1000);
@@ -536,6 +535,16 @@ public class PageClockTests : PageTestEx
             await Page.Clock.RunForAsync(1);
             Assert.AreEqual(2, _calls.Count);
             Assert.AreEqual("inner", _calls[1][0]);
+        }
+
+        [PlaywrightTest("page-clock.spec.ts", "")]
+        public async Task ShouldHavePausedClockAfterInstall()
+        {
+            await Page.Clock.InstallAsync();
+            await Page.GotoAsync("data:text/html,");
+            var currentTime = await Page.EvaluateAsync<long>("Date.now()");
+            await Page.WaitForTimeoutAsync(100);
+            var newTime = await Page.EvaluateAsync<long>("Date.now()");
         }
     }
 }

@@ -19,15 +19,22 @@ type RunResult = {
 
 export const test = base.extend<{
   proxyServer: ProxyServer;
-  testMode: 'nunit' | 'mstest' | 'xunit';
+  testMode: 'nunit' | 'mstest' | 'mstest.v4' | 'xunit' | 'xunit.v3';
   runTest: (files: Record<string, string>, command: string, env?: NodeJS.ProcessEnv) => Promise<RunResult>;
-  launchServer: ({ port: number }) => Promise<void>;
+  launchServer: (options: { port: number }) => Promise<void>;
+  server: SimpleServer;
 }>({
   proxyServer: async ({}, use) => {
     const proxyServer = new ProxyServer();
     await proxyServer.listen();
     await use(proxyServer);
     await proxyServer.stop();
+  },
+  server: async ({}, use) => {
+    const server = new SimpleServer();
+    await server.listen();
+    await use(server);
+    await server.stop();
   },
   testMode: null,
   launchServer: async ({ playwright }, use) => {
@@ -63,7 +70,7 @@ export const test = base.extend<{
       if (process.env.PWTEST_DEBUG) {
         cp.stdout.pipe(process.stdout);
         cp.stderr.pipe(process.stderr);
-        console.log(`Running: ${command}`);
+        console.log(`Running: TEST_MODE=${testMode} PWTEST_TEST_DIR=${testDir} ${command}`);
       }
       let [rawStdout, rawStderr] = ['', ''];
       cp.stdout.on('data', (data: Buffer) => rawStdout += data.toString());
@@ -172,6 +179,40 @@ class ProxyServer {
 
   listenAddr() {
     return `http://127.0.0.1:${(this._server.address() as AddressInfo).port}`;
+  }
+
+  async listen() {
+    await new Promise<void>(resolve => this._server.listen(0, resolve));
+  }
+
+  async stop() {
+    await new Promise<void>(resolve => this._server.close(() => resolve()));
+  }
+}
+
+class SimpleServer {
+  private _server: http.Server;
+
+  constructor() {
+    this._server = http.createServer(this.handler.bind(this));
+  }
+
+  handler(req: http.IncomingMessage, res: http.ServerResponse) {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Server</title>
+</head>
+<body>
+  <h1>Test Server</h1>
+  <p>This is a simple test server for Playwright tests.</p>
+</body>
+</html>`);
+  }
+
+  get EMPTY_PAGE() {
+    return `http://127.0.0.1:${(this._server.address() as AddressInfo).port}/empty.html`;
   }
 
   async listen() {

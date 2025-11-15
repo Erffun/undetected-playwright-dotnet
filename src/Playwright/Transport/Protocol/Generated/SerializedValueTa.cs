@@ -22,9 +22,15 @@
  * SOFTWARE.
  */
 
-namespace Microsoft.Playwright.Transport;
+using System.Text.Json.Serialization;
 
-internal class ErrorEntry
+namespace Microsoft.Playwright.Transport.Protocol;
+
+internal class SerializedValueTa
 {
-    public PlaywrightServerError Error { get; set; }
+    [JsonPropertyName("b")]
+    public byte[] B { get; set; } = null!;
+
+    [JsonPropertyName("k")]
+    public string K { get; set; } = null!;
 }

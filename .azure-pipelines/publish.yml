@@ -1,4 +1,10 @@
-trigger: none # We don't want CI builds, just a manual release process
+# Run only on tags (no PRs, no branch CI)
+pr: none
+trigger:
+  tags:
+    include:
+      - '*'
+
 parameters:
 - name: doRelease
   displayName: Push the Playwright Release to NuGet.org
@@ -12,9 +18,9 @@ parameters:
 
 variables:
 - name: BuildConfiguration
-  value: 'Release' 
+  value: 'Release'
 - name: TeamName
-  value: Playwright 
+  value: 'Playwright'
 
 resources:
   repositories:
@@ -44,7 +50,7 @@ extends:
             signing:
               enabled: true
               signType: real
-              templateContext:
+              signWithProd: true
           outputs:
           - output: pipelineArtifact
             displayName: 'Publish Artifact'
@@ -77,25 +83,30 @@ extends:
               src/Playwright/Playwright.csproj;
               src/Playwright.NUnit/Playwright.NUnit.csproj;
               src/Playwright.MSTest/Playwright.MSTest.csproj;
+              src/Playwright.MSTest.v4/Playwright.MSTest.v4.csproj;
               src/Playwright.Xunit/Playwright.Xunit.csproj;
+              src/Playwright.Xunit.v3/Playwright.Xunit.v3.csproj;
               src/Playwright.TestAdapter/Playwright.TestAdapter.csproj;
             packDirectory: '$(Build.ArtifactStagingDirectory)/nuget'
             versioningScheme: 'off'
         - task: 1ES.PublishNuget@1
           displayName: Publish Microsoft.Playwright{NUnit,MSTest,Xunit,TestAdapter}
-          condition: eq('${{parameters.doRelease}}', true)
+          condition: or(
+              eq('${{ parameters.doRelease }}', true),
+              startsWith(variables['Build.SourceBranch'], 'refs/tags/')
+            )
           inputs:
             useDotNetTask: false
             # The reason for the 1.* after the package name is that we know the end of the package name in order to not
             # match with e.g. Microsoft.Playwright.CLI when we only want to match Microsoft.Playwright.
             # Semicolon separated as per https://portal.microsofticm.com/imp/v5/incidents/details/467483180/summary
-            packagesToPush: $(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.MSTest.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.Xunit.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.NUnit.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.TestAdapter.1.*.nupkg
+            packagesToPush: $(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.MSTest.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.MSTest.v4.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.Xunit.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.Xunit.v3.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.NUnit.1.*.nupkg;$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.TestAdapter.1.*.nupkg
             packageParentPath: '$(Build.ArtifactStagingDirectory)'
             nuGetFeedType: external
             publishFeedCredentials: 'NuGet-Playwright'
         - task: 1ES.PublishNuget@1
           displayName: Publish Microsoft.Playwright.CLI
-          condition: eq('${{parameters.doReleaseCLI}}', true)
+          condition: eq('${{ parameters.doReleaseCLI }}', true)
           inputs:
             useDotNetTask: false
             packagesToPush: '$(Build.ArtifactStagingDirectory)/nuget/Microsoft.Playwright.CLI.1.*.nupkg'

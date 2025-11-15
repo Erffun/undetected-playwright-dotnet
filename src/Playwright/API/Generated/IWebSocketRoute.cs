@@ -25,8 +25,6 @@
 using System;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -39,7 +37,7 @@ namespace Microsoft.Playwright;
 /// <para>**Mocking**</para>
 /// <para>
 /// By default, the routed WebSocket will not connect to the server. This way, you can
-/// mock entire communcation over the WebSocket. Here is an example that responds to
+/// mock entire communication over the WebSocket. Here is an example that responds to
 /// a <c>"request"</c> with a <c>"response"</c>.
 /// </para>
 /// <code>
@@ -170,7 +168,7 @@ public partial interface IWebSocketRoute
     /// code</a> and an optional <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close#reason">close
     /// reason</a>.
     /// </param>
-    void OnClose(Action<int?, string> handler);
+    void OnClose(Action<int?, string?> handler);
 
     /// <summary>
     /// <para>
@@ -206,5 +204,3 @@ public partial interface IWebSocketRoute
     /// <summary><para>URL of the WebSocket created in the page.</para></summary>
     string Url { get; }
 }
-
-#nullable disable

@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -45,7 +44,7 @@ internal static class EvaluateArgumentValueConverter
         ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve,
     };
 
-    internal static object Serialize(object value, List<EvaluateArgumentGuidElement> handles, VisitorInfo visitorInfo)
+    internal static object Serialize(object? value, List<EvaluateArgumentGuidElement> handles, VisitorInfo visitorInfo)
     {
         int id;
         if (value == null)
@@ -203,7 +202,7 @@ internal static class EvaluateArgumentValueConverter
         return new { o = entries, id };
     }
 
-    internal static object Deserialize(JsonElement result, Type t)
+    internal static object? Deserialize(JsonElement result, Type t)
     {
         var parsed = ParseEvaluateResultToExpando(result, new Dictionary<int, object>());
 
@@ -227,7 +226,7 @@ internal static class EvaluateArgumentValueConverter
         return ToExpectedType(parsed, t, new Dictionary<object, object>());
     }
 
-    private static object ToExpectedType(object parsed, Type t, IDictionary<object, object> visited)
+    private static object? ToExpectedType(object? parsed, Type t, IDictionary<object, object> visited)
     {
         if (parsed == null)
         {
@@ -275,7 +274,7 @@ internal static class EvaluateArgumentValueConverter
         return ChangeType(parsed, t);
     }
 
-    private static object ChangeType(object value, Type conversion)
+    private static object? ChangeType(object value, Type conversion)
     {
         var t = conversion;
 
@@ -301,7 +300,7 @@ internal static class EvaluateArgumentValueConverter
         return Convert.ChangeType(value, t, CultureInfo.InvariantCulture);
     }
 
-    private static object ParseEvaluateResultToExpando(JsonElement result, IDictionary<int, object> refs)
+    private static object? ParseEvaluateResultToExpando(JsonElement result, IDictionary<int, object> refs)
     {
         // Parse JSON into a structure where objects/arrays are represented with expando/arrays.
         if (result.TryGetProperty("v", out var value))
@@ -353,6 +352,26 @@ internal static class EvaluateArgumentValueConverter
             return new Regex(regex.GetProperty("p").ToString(), RegexOptionsExtensions.FromInlineFlags(regex.GetProperty("f").ToString()));
         }
 
+        if (result.TryGetProperty("ta", out var ta))
+        {
+            byte[] bytes = Convert.FromBase64String(ta.GetProperty("b").ToString());
+            return ta.GetProperty("k").ToString() switch
+            {
+                "i8" => bytes.Select(b => unchecked((sbyte)b)).ToArray(),
+                "ui8" => bytes,
+                "ui8c" => bytes,
+                "i16" => Enumerable.Range(0, bytes.Length / 2).Select(i => BitConverter.ToInt16(bytes, i * 2)).ToArray(),
+                "ui16" => Enumerable.Range(0, bytes.Length / 2).Select(i => BitConverter.ToUInt16(bytes, i * 2)).ToArray(),
+                "i32" => Enumerable.Range(0, bytes.Length / 4).Select(i => BitConverter.ToInt32(bytes, i * 4)).ToArray(),
+                "ui32" => Enumerable.Range(0, bytes.Length / 4).Select(i => BitConverter.ToUInt32(bytes, i * 4)).ToArray(),
+                "f32" => Enumerable.Range(0, bytes.Length / 4).Select(i => BitConverter.ToSingle(bytes, i * 4)).ToArray(),
+                "f64" => Enumerable.Range(0, bytes.Length / 8).Select(i => BitConverter.ToDouble(bytes, i * 8)).ToArray(),
+                "bi64" => Enumerable.Range(0, bytes.Length / 8).Select(i => BitConverter.ToInt64(bytes, i * 8)).ToArray(),
+                "bui64" => Enumerable.Range(0, bytes.Length / 8).Select(i => BitConverter.ToUInt64(bytes, i * 8)).ToArray(),
+                _ => null,
+            };
+        }
+
         if (result.TryGetProperty("b", out var boolean))
         {
             return boolean.ToObject<bool>();
@@ -372,7 +391,7 @@ internal static class EvaluateArgumentValueConverter
         {
             var expando = new ExpandoObject();
             refs.Add(result.GetProperty("id").GetInt32(), expando);
-            IDictionary<string, object> dict = expando;
+            IDictionary<string, object?> dict = expando;
             foreach (var kv in obj.ToObject<KeyJsonElementValueObject[]>())
             {
                 dict[kv.K] = ParseEvaluateResultToExpando(kv.V, refs);
@@ -383,7 +402,7 @@ internal static class EvaluateArgumentValueConverter
 
         if (result.TryGetProperty("a", out var array))
         {
-            List<object> list = new List<object>();
+            List<object?> list = [];
             refs.Add(result.GetProperty("id").GetInt32(), list);
             foreach (var item in array.EnumerateArray())
             {

@@ -32,8 +32,11 @@ internal class BrowserContextInitializer : EventTargetInitializer
     public bool IsChromium { get; set; }
 
     [JsonPropertyName("requestContext")]
-    public Core.APIRequestContext RequestContext { get; set; }
+    public Core.APIRequestContext RequestContext { get; set; } = null!;
 
     [JsonPropertyName("tracing")]
-    public Core.Tracing Tracing { get; set; }
+    public Core.Tracing Tracing { get; set; } = null!;
+
+    [JsonPropertyName("options")]
+    public System.Text.Json.JsonElement Options { get; set; }
 }

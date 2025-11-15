@@ -26,8 +26,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 public class BrowserNewContextOptions
@@ -131,6 +129,12 @@ public class BrowserNewContextOptions
     /// <c>passphrase</c> property should be provided if the certificate is encrypted. The
     /// <c>origin</c> property should be provided with an exact match to the request origin
     /// that the certificate is valid for.
+    /// </para>
+    /// <para>
+    /// Client certificate authentication is only active when at least one client certificate
+    /// is provided. If you want to reject all client certificates sent by the server, you
+    /// need to provide a client certificate with an <c>origin</c> that does not match any
+    /// of the domains you plan to visit.
     /// </para>
     /// <para>
     /// When using WebKit on macOS, accessing <c>localhost</c> will not pick up client certificates.
@@ -448,5 +452,3 @@ public class BrowserNewContextOptions
     [JsonPropertyName("viewport")]
     public ViewportSize? ViewportSize { get; set; }
 }
-
-#nullable disable

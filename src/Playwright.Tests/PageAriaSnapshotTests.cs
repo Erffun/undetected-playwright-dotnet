@@ -99,7 +99,60 @@ public class PageAriaSnapshotTests : PageTestEx
         await CheckAndMatchSnapshot(Page.Locator("body"), @"
             - list:
               - listitem:
-                - link ""link""
+                - link ""link"":
+                  - /url: about:blank
+        ");
+    }
+
+    [PlaywrightTest("to-match-aria-snapshot.spec.ts", "should detect unexpected children: equal")]
+    public async Task ShouldDetectUnexpectedChildrenEqual()
+    {
+        await Page.SetContentAsync(@"
+            <ul>
+                <li>One</li>
+                <li>Two</li>
+                <li>Three</li>
+            </ul>
+        ");
+        await Expect(Page.Locator("body")).ToMatchAriaSnapshotAsync(@"
+            - list:
+                - listitem: ""One""
+                - listitem: ""Three""
+        ");
+        var exception = await PlaywrightAssert.ThrowsAsync<PlaywrightException>(() =>
+        {
+            return Expect(Page.Locator("body")).ToMatchAriaSnapshotAsync(@"
+                - list:
+                    - /children: equal
+                    - listitem: ""One""
+                    - listitem: ""Three""
+            ", new() { Timeout = 300 });
+        });
+        StringAssert.Contains("Expect \"ToMatchAriaSnapshotAsync\" with timeout 300ms", exception.Message);
+        StringAssert.Contains("- unexpected value", exception.Message);
+    }
+
+    [PlaywrightTest("to-match-aria-snapshot.spec.ts", "should match url")]
+    public async Task ShouldMatchUrl()
+    {
+        await Page.SetContentAsync(@"
+            <a href='https://example.com'>Link</a>
+        ");
+        await Expect(Page.Locator("body")).ToMatchAriaSnapshotAsync(@"
+            - link:
+                - /url: /.*example.com/
+        ");
+    }
+
+    [PlaywrightTest("page-aria-snapshot.spec.ts", "match values both against regex and string")]
+    public async Task MatchValuesBothAgainstRegexAndString()
+    {
+        await Page.SetContentAsync(@"
+            <a href='/auth?r=/'>Log in</a>
+        ");
+        await Expect(Page.Locator("body")).ToMatchAriaSnapshotAsync(@"
+            - link ""Log in"":
+                - /url: /auth?r=/
         ");
     }
 }

@@ -25,8 +25,6 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 public class APIRequestNewContextOptions
@@ -46,6 +44,7 @@ public class APIRequestNewContextOptions
         FailOnStatusCode = clone.FailOnStatusCode;
         HttpCredentials = clone.HttpCredentials;
         IgnoreHTTPSErrors = clone.IgnoreHTTPSErrors;
+        MaxRedirects = clone.MaxRedirects;
         Proxy = clone.Proxy;
         StorageState = clone.StorageState;
         StorageStatePath = clone.StorageStatePath;
@@ -90,6 +89,12 @@ public class APIRequestNewContextOptions
     /// <c>passphrase</c> property should be provided if the certificate is encrypted. The
     /// <c>origin</c> property should be provided with an exact match to the request origin
     /// that the certificate is valid for.
+    /// </para>
+    /// <para>
+    /// Client certificate authentication is only active when at least one client certificate
+    /// is provided. If you want to reject all client certificates sent by the server, you
+    /// need to provide a client certificate with an <c>origin</c> that does not match any
+    /// of the domains you plan to visit.
     /// </para>
     /// <para>
     /// When using WebKit on macOS, accessing <c>localhost</c> will not pick up client certificates.
@@ -138,6 +143,16 @@ public class APIRequestNewContextOptions
     [JsonPropertyName("ignoreHTTPSErrors")]
     public bool? IgnoreHTTPSErrors { get; set; }
 
+    /// <summary>
+    /// <para>
+    /// Maximum number of request redirects that will be followed automatically. An error
+    /// will be thrown if the number is exceeded. Defaults to <c>20</c>. Pass <c>0</c> to
+    /// not follow redirects. This can be overwritten for each request individually.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("maxRedirects")]
+    public int? MaxRedirects { get; set; }
+
     /// <summary><para>Network proxy settings.</para></summary>
     [JsonPropertyName("proxy")]
     public Proxy? Proxy { get; set; }
@@ -177,5 +192,3 @@ public class APIRequestNewContextOptions
     [JsonPropertyName("userAgent")]
     public string? UserAgent { get; set; }
 }
-
-#nullable disable

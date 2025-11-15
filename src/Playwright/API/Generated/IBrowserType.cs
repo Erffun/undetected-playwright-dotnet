@@ -24,8 +24,6 @@
 
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -169,11 +167,19 @@ public partial interface IBrowserType
     /// </summary>
     /// <param name="userDataDir">
     /// Path to a User Data Directory, which stores browser session data like cookies and
-    /// local storage. More details for <a href="https://chromium.googlesource.com/chromium/src/+/master/docs/user_data_dir.md#introduction">Chromium</a>
-    /// and <a href="https://developer.mozilla.org/en-US/docs/Mozilla/Command_Line_Options#User_Profile">Firefox</a>.
-    /// Note that Chromium's user data directory is the **parent** directory of the "Profile
-    /// Path" seen at <c>chrome://version</c>. Pass an empty string to use a temporary directory
-    /// instead.
+    /// local storage. Pass an empty string to create a temporary directory.
+    /// More details for <a href="https://chromium.googlesource.com/chromium/src/+/master/docs/user_data_dir.md#introduction">Chromium</a>
+    /// and <a href="https://wiki.mozilla.org/Firefox/CommandLineOptions#User_profile">Firefox</a>.
+    /// Chromium's user data directory is the **parent** directory of the "Profile Path"
+    /// seen at <c>chrome://version</c>.
+    /// Note that browsers do not allow launching multiple instances with the same User
+    /// Data Directory.
+    /// Chromium/Chrome: Due to recent Chrome policy changes, automating the default Chrome
+    /// user profile is not supported. Pointing <c>userDataDir</c> to Chrome's main "User
+    /// Data" directory (the profile used for your regular browsing) may result in pages
+    /// not loading or the browser exiting. Create and use a separate directory (for example,
+    /// an empty folder) as your automation profile instead. See https://developer.chrome.com/blog/remote-debugging-port
+    /// for details.
     /// </param>
     /// <param name="options">Call options</param>
     Task<IBrowserContext> LaunchPersistentContextAsync(string userDataDir, BrowserTypeLaunchPersistentContextOptions? options = default);
@@ -181,5 +187,3 @@ public partial interface IBrowserType
     /// <summary><para>Returns browser name. For example: <c>'chromium'</c>, <c>'webkit'</c> or <c>'firefox'</c>.</para></summary>
     string Name { get; }
 }
-
-#nullable disable

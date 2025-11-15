@@ -99,12 +99,13 @@ public class PageRouteTests : PageTestEx
         Assert.AreEqual(new[] { 1 }, intercepted.ToArray());
     }
 
-    [PlaywrightTest("page-route.spec.ts", "should support ? in glob pattern")]
-    public async Task ShouldSupportInGlobPattern()
+    [PlaywrightTest("page-route.spec.ts", "should not support ? in glob pattern")]
+    public async Task ShouldNotSupportQuestionMarkInGlobPattern()
     {
         Server.SetRoute("/index", context => context.Response.WriteAsync("index-no-hello"));
         Server.SetRoute("/index123hello", context => context.Response.WriteAsync("index123hello"));
         Server.SetRoute("/index?hello", context => context.Response.WriteAsync("index?hello"));
+        Server.SetRoute("/index1hello", context => context.Response.WriteAsync("index1hello"));
 
         await Page.RouteAsync("**/index?hello", (route) => route.FulfillAsync(new() { Body = "intercepted any character" }));
         await Page.RouteAsync("**/index\\?hello", (route) => route.FulfillAsync(new() { Body = "intercepted question mark" }));
@@ -116,7 +117,7 @@ public class PageRouteTests : PageTestEx
         StringAssert.Contains("index-no-hello", await Page.ContentAsync());
 
         await Page.GotoAsync(Server.Prefix + "/index1hello");
-        StringAssert.Contains("intercepted any character", await Page.ContentAsync());
+        StringAssert.Contains("index1hello", await Page.ContentAsync());
 
         await Page.GotoAsync(Server.Prefix + "/index123hello");
         StringAssert.Contains("index123hello", await Page.ContentAsync());
@@ -506,14 +507,14 @@ public class PageRouteTests : PageTestEx
     {
         // The requestWillBeSent will report URL as-is, whereas interception will
         // report encoded URL for stylesheet. @see crbug.com/759388
+        await Page.GotoAsync(Server.EmptyPage);
         var requests = new List<IRequest>();
         await Page.RouteAsync("**/*", (route) =>
         {
             route.ContinueAsync();
             requests.Add(route.Request);
         });
-        var response = await Page.GotoAsync($"data:text/html,<meta charset=utf-8><link rel=\"stylesheet\" href=\"{Server.EmptyPage}/fonts?helvetica|arial\"/>");
-        Assert.Null(response);
+        await Page.SetContentAsync($"<link rel=\"stylesheet\" href=\"{Server.Prefix}/fonts?helvetica|arial\"/>");
         Assert.That(requests, Has.Count.EqualTo(1));
         Assert.AreEqual((int)HttpStatusCode.NotFound, (await requests[0].ResponseAsync()).Status);
     }
@@ -642,7 +643,7 @@ public class PageRouteTests : PageTestEx
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     mode: 'cors',
-                    body: JSON.stringify({ 'number': 1 }) 
+                    body: JSON.stringify({ 'number': 1 })
                 });
                 return response.json();
             }");
@@ -670,7 +671,7 @@ public class PageRouteTests : PageTestEx
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   mode: 'cors',
-                  body: JSON.stringify({ 'number': 1 }) 
+                  body: JSON.stringify({ 'number': 1 })
                 });
                 return response.json();
             }");
@@ -682,7 +683,7 @@ public class PageRouteTests : PageTestEx
                   method: 'DELETE',
                   headers: { 'Content-Type': 'application/json' },
                   mode: 'cors',
-                  body: JSON.stringify({ 'number': 1 }) 
+                  body: JSON.stringify({ 'number': 1 })
                 });
                 return response.json();
             }");
@@ -754,7 +755,7 @@ public class PageRouteTests : PageTestEx
         {
             intercepted.Add("first");
             route.ContinueAsync();
-        };
+        }
         await Page.RouteAsync("**/*", handler, new() { Times = 1 });
         await Page.RouteAsync("**/*", async (route) =>
         {

@@ -27,8 +27,6 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -1552,6 +1550,22 @@ public partial interface IPage
 
     /// <summary>
     /// <para>
+    /// Returns up to (currently) 200 last console messages from this page. See <see cref="IPage.Console"/>
+    /// for more details.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<IConsoleMessage>> ConsoleMessagesAsync();
+
+    /// <summary>
+    /// <para>
+    /// Returns up to (currently) 200 last page errors from this page. See <see cref="IPage.PageError"/>
+    /// for more details.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<string>> PageErrorsAsync();
+
+    /// <summary>
+    /// <para>
     /// The method returns an element locator that can be used to perform actions on this
     /// page / frame. Locator is resolved to the element immediately before performing an
     /// action, so a series of actions on the same locator can in fact be performed on different
@@ -1584,7 +1598,7 @@ public partial interface IPage
     /// <summary>
     /// <para>
     /// Pauses script execution. Playwright will stop executing the script and wait for
-    /// the user to either press 'Resume' button in the page overlay or to call <c>playwright.resume()</c>
+    /// the user to either press the 'Resume' button in the page overlay or to call <c>playwright.resume()</c>
     /// in the DevTools console.
     /// </para>
     /// <para>
@@ -1755,6 +1769,25 @@ public partial interface IPage
     /// </summary>
     /// <param name="selector">A selector to query for.</param>
     Task<IReadOnlyList<IElementHandle>> QuerySelectorAllAsync(string selector);
+
+    /// <summary>
+    /// <para>
+    /// Returns up to (currently) 100 last network request from this page. See <see cref="IPage.Request"/>
+    /// for more details.
+    /// </para>
+    /// <para>
+    /// Returned requests should be accessed immediately, otherwise they might be collected
+    /// to prevent unbounded memory growth as new requests come in. Once collected, retrieving
+    /// most information about the request is impossible.
+    /// </para>
+    /// <para>
+    /// Note that requests reported through the <see cref="IPage.Request"/> request are
+    /// not collected, so there is a trade off between efficient memory usage with <see
+    /// cref="IPage.RequestsAsync"/> and the amount of available information reported through
+    /// <see cref="IPage.Request"/>.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<IRequest>> RequestsAsync();
 
     /// <summary>
     /// <para>
@@ -1986,9 +2019,10 @@ public partial interface IPage
     /// <para>Enabling routing disables http cache.</para>
     /// </remarks>
     /// <param name="url">
-    /// A glob pattern, regex pattern or predicate receiving <see cref="URL"/> to match
-    /// while routing. When a <see cref="IBrowser.NewContextAsync"/> via the context options
-    /// was provided and the passed URL is a path, it gets merged via the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
+    /// A glob pattern, regex pattern, or predicate that receives a <see cref="URL"/> to
+    /// match during routing. If <see cref="IBrowser.NewContextAsync"/> is set in the context
+    /// options and the provided URL is a string that does not start with <c>*</c>, it is
+    /// resolved using the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
     /// URL()</c></a> constructor.
     /// </param>
     /// <param name="handler">handler function to route the request.</param>
@@ -2063,9 +2097,10 @@ public partial interface IPage
     /// <para>Enabling routing disables http cache.</para>
     /// </remarks>
     /// <param name="url">
-    /// A glob pattern, regex pattern or predicate receiving <see cref="URL"/> to match
-    /// while routing. When a <see cref="IBrowser.NewContextAsync"/> via the context options
-    /// was provided and the passed URL is a path, it gets merged via the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
+    /// A glob pattern, regex pattern, or predicate that receives a <see cref="URL"/> to
+    /// match during routing. If <see cref="IBrowser.NewContextAsync"/> is set in the context
+    /// options and the provided URL is a string that does not start with <c>*</c>, it is
+    /// resolved using the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
     /// URL()</c></a> constructor.
     /// </param>
     /// <param name="handler">handler function to route the request.</param>
@@ -2140,9 +2175,10 @@ public partial interface IPage
     /// <para>Enabling routing disables http cache.</para>
     /// </remarks>
     /// <param name="url">
-    /// A glob pattern, regex pattern or predicate receiving <see cref="URL"/> to match
-    /// while routing. When a <see cref="IBrowser.NewContextAsync"/> via the context options
-    /// was provided and the passed URL is a path, it gets merged via the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
+    /// A glob pattern, regex pattern, or predicate that receives a <see cref="URL"/> to
+    /// match during routing. If <see cref="IBrowser.NewContextAsync"/> is set in the context
+    /// options and the provided URL is a string that does not start with <c>*</c>, it is
+    /// resolved using the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
     /// URL()</c></a> constructor.
     /// </param>
     /// <param name="handler">handler function to route the request.</param>
@@ -3786,5 +3822,3 @@ public partial interface IPage
     /// <remarks><para>This does not contain ServiceWorkers</para></remarks>
     IReadOnlyList<IWorker> Workers { get; }
 }
-
-#nullable disable

@@ -81,8 +81,8 @@ public class GlobalFetchTests : PlaywrightTestEx
     {
         var request = await Playwright.APIRequest.NewContextAsync(new() { Timeout = 100 });
         Server.SetRoute("/empty.html", async request => await Task.Delay(5_000));
-        var exception = Assert.ThrowsAsync<PlaywrightException>(() => request.GetAsync(Server.EmptyPage));
-        StringAssert.Contains("Request timed out after 100ms", exception.Message);
+        var exception = Assert.ThrowsAsync<TimeoutException>(() => request.GetAsync(Server.EmptyPage));
+        StringAssert.Contains("Timeout 100ms exceeded", exception.Message);
         await request.DisposeAsync();
     }
 
@@ -402,6 +402,22 @@ public class GlobalFetchTests : PlaywrightTestEx
         foreach (var method in new[] { "GET", "PUT", "POST", "OPTIONS", "HEAD", "PATCH" })
         {
             var response = await request.FetchAsync($"{Server.Prefix}/a/redirect1", new() { Method = method, MaxRedirects = 0 });
+            Assert.AreEqual("/b/c/redirect2", response.Headers["location"]);
+            Assert.AreEqual(302, response.Status);
+        }
+        await request.DisposeAsync();
+    }
+
+    [PlaywrightTest("global-fetch.spec.ts", "should not follow redirects when maxRedirects is set to 0 in newContext")]
+    public async Task ShouldNotFollowRedirectsWhenMaxRedirectsIsSetTo0InNewContext()
+    {
+        Server.SetRedirect("/a/redirect1", "/b/c/redirect2");
+        Server.SetRedirect("/b/c/redirect2", "/simple.json");
+
+        var request = await Playwright.APIRequest.NewContextAsync(new() { MaxRedirects = 0 });
+        foreach (var method in new[] { "GET", "PUT", "POST", "OPTIONS", "HEAD", "PATCH" })
+        {
+            var response = await request.FetchAsync($"{Server.Prefix}/a/redirect1", new() { Method = method });
             Assert.AreEqual("/b/c/redirect2", response.Headers["location"]);
             Assert.AreEqual(302, response.Status);
         }

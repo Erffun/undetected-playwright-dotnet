@@ -24,6 +24,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 
@@ -34,9 +35,6 @@ namespace Microsoft.Playwright.Helpers;
 /// </summary>
 internal static class StringExtensions
 {
-    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions#escaping
-    private static readonly char[] _escapeGlobChars = new[] { '$', '^', '+', '.', '*', '(', ')', '|', '\\', '?', '{', '}', '[', ']' };
-
     private static readonly Dictionary<string, string> _mappings = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
         {
             { ".323", "text/h323" },
@@ -606,7 +604,7 @@ internal static class StringExtensions
     /// </summary>
     /// <param name="query">Query string.</param>
     /// <returns>A <see cref="Dictionary{TKey, TValue}"/> containing the parsed QueryString.</returns>
-    public static Dictionary<string, string> ParseQueryString(this string query)
+    internal static Dictionary<string, string> ParseQueryString(this string query)
     {
         if (query is null)
         {
@@ -629,98 +627,10 @@ internal static class StringExtensions
         return result;
     }
 
-    /// <summary>
-    /// Converts an url glob expression to a regex.
-    /// </summary>
-    /// <param name="glob">Input url.</param>
-    /// <returns>A Regex with the glob expression.</returns>
-    public static string GlobToRegex(this string glob)
-    {
-        if (string.IsNullOrEmpty(glob))
-        {
-            return null;
-        }
-
-        List<string> tokens = new() { "^" };
-        bool inGroup = false;
-
-        for (int i = 0; i < glob.Length; ++i)
-        {
-            var c = glob[i];
-            if (c == '\\' && i + 1 < glob.Length)
-            {
-                var @char = glob[++i];
-                tokens.Add(_escapeGlobChars.Contains(@char) ? "\\" + @char : @char.ToString());
-                continue;
-            }
-            if (c == '*')
-            {
-                char? beforeDeep = i == 0 ? null : glob[i - 1];
-                int starCount = 1;
-                while (i < glob.Length - 1 && glob[i + 1] == '*')
-                {
-                    starCount++;
-                    i++;
-                }
-
-                char? afterDeep = i >= glob.Length - 1 ? null : glob[i + 1];
-                var isDeep = starCount > 1 &&
-                    (beforeDeep == '/' || beforeDeep == null) &&
-                    (afterDeep == '/' || afterDeep == null);
-                if (isDeep)
-                {
-                    tokens.Add("((?:[^/]*(?:\\/|$))*)");
-                    i++;
-                }
-                else
-                {
-                    tokens.Add("([^/]*)");
-                }
-                continue;
-            }
-
-            switch (c)
-            {
-                case '?':
-                    tokens.Add(".");
-                    break;
-                case '[':
-                    tokens.Add("[");
-                    break;
-                case ']':
-                    tokens.Add("]");
-                    break;
-                case '{':
-                    inGroup = true;
-                    tokens.Add("(");
-                    break;
-                case '}':
-                    inGroup = false;
-                    tokens.Add(")");
-                    break;
-                case ',':
-                    if (inGroup)
-                    {
-                        tokens.Add("|");
-                        break;
-                    }
-
-                    tokens.Add("\\" + c);
-                    break;
-                default:
-                    tokens.Add(_escapeGlobChars.Contains(c) ? "\\" + c : c.ToString());
-                    break;
-            }
-        }
-
-        tokens.Add("$");
-        return string.Concat(tokens.ToArray());
-    }
-
     internal static string GetContentType(this string path)
     {
         const string defaultContentType = "application/octet-stream";
-        string extension = GetExtension(path);
+        var extension = GetExtension(path);
         if (extension == null)
         {
             return defaultContentType;
@@ -732,7 +642,7 @@ internal static class StringExtensions
     internal static string MimeType(this string file)
         => _mappings.TryGetValue(new FileInfo(file).Extension, out string mime) ? mime : "application/octet-stream";
 
-    private static string GetExtension(string path)
+    private static string? GetExtension(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -746,5 +656,15 @@ internal static class StringExtensions
         }
 
         return path.Substring(index);
+    }
+
+    /// <summary>
+    /// Checks if the string is null or empty. This should be used instead of string.IsNullOrEmpty to avoid nullability warnings.
+    /// If we drop netstandard2.0 support, we can migrate to string.IsNullOrEmpty().
+    /// Relates https://stackoverflow.com/a/64066801.
+    /// </summary>
+    internal static bool IsNullOrEmpty([NotNullWhen(false)] this string? data)
+    {
+        return string.IsNullOrEmpty(data);
     }
 }

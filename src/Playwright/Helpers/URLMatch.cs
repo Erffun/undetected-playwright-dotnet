@@ -23,26 +23,33 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace Microsoft.Playwright.Helpers;
 
 public class URLMatch
 {
-    public Regex re { get; set; }
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions#escaping
+    private static readonly char[] _escapeGlobChars = new[] { '$', '^', '+', '.', '*', '(', ')', '|', '\\', '?', '{', '}', '[', ']' };
 
-    public Func<string, bool> func { get; set; }
+    public Regex? re { get; set; }
 
-    public string glob { get; set; }
+    public Func<string, bool>? func { get; set; }
 
-    public string baseURL { get; set; }
+    public string? glob { get; set; }
+
+    public string? baseURL { get; set; }
+
+    public bool isWebSocketUrl { get; set; }
 
     public bool Match(string url)
     {
-        return MatchImpl(url, re, func, glob, baseURL);
+        return MatchImpl(url, re, func, glob, baseURL, isWebSocketUrl);
     }
 
-    private static bool MatchImpl(string url, Regex re, Func<string, bool> func, string glob, string baseURL)
+    private static bool MatchImpl(string url, Regex? re, Func<string, bool>? func, string? glob, string? baseURL, bool isWebSocketUrl)
     {
         if (re != null)
         {
@@ -60,29 +67,30 @@ public class URLMatch
             {
                 return true;
             }
-            if (!glob.StartsWith("*", StringComparison.InvariantCultureIgnoreCase))
-            {
-                // Allow http(s) baseURL to match ws(s) urls.
-                if (!string.IsNullOrEmpty(baseURL) && new Regex("^https?://").IsMatch(baseURL) && new Regex("^wss?://").IsMatch(url))
-                {
-                    baseURL = new Regex("^http").Replace(baseURL, "ws");
-                }
-                glob = ConstructURLBasedOnBaseURL(baseURL, glob);
-            }
-            return new Regex(glob.GlobToRegex()).IsMatch(url);
+            var match = ResolveGlobToRegexPattern(baseURL, glob, isWebSocketUrl);
+            return new Regex(match).IsMatch(url);
         }
+
         return true;
     }
 
-    internal static string ConstructURLBasedOnBaseURL(string baseUrl, string url)
+    // In Node.js, new URL('http://localhost') returns 'http://localhost/'.
+    // To ensure the same url matching behvaior, do the same.
+    internal static Uri FixupTrailingSlash(Uri uri)
+    {
+        var builder = new UriBuilder(uri);
+        if (string.IsNullOrEmpty(builder.Path))
+        {
+            builder.Path = "/";
+        }
+        return builder.Uri;
+    }
+
+    internal static string ConstructURLBasedOnBaseURL(string? baseUrl, string url)
     {
         try
         {
-            if (string.IsNullOrEmpty(baseUrl))
-            {
-                return new Uri(url, UriKind.Absolute).ToString();
-            }
-            return new Uri(new Uri(baseUrl), new Uri(url, UriKind.RelativeOrAbsolute)).ToString();
+            return ResolveBaseURL(baseUrl, url).Resolved;
         }
         catch
         {
@@ -90,11 +98,196 @@ public class URLMatch
         }
     }
 
-    public bool Equals(string globMatch, Regex reMatch, Func<string, bool> funcMatch, string baseURL)
+    public static string? GlobToRegexPattern(string glob)
+    {
+        if (string.IsNullOrEmpty(glob))
+        {
+            return null;
+        }
+
+        List<string> tokens = new() { "^" };
+        bool inGroup = false;
+
+        for (int i = 0; i < glob.Length; ++i)
+        {
+            var c = glob[i];
+            if (c == '\\' && i + 1 < glob.Length)
+            {
+                var @char = glob[++i];
+                tokens.Add(_escapeGlobChars.Contains(@char) ? "\\" + @char : @char.ToString());
+                continue;
+            }
+            if (c == '*')
+            {
+                int starCount = 1;
+                while (i < glob.Length - 1 && glob[i + 1] == '*')
+                {
+                    starCount++;
+                    i++;
+                }
+                if (starCount > 1)
+                {
+                    tokens.Add("(.*)");
+                }
+                else
+                {
+                    tokens.Add("([^/]*)");
+                }
+                continue;
+            }
+
+            switch (c)
+            {
+                case '{':
+                    inGroup = true;
+                    tokens.Add("(");
+                    break;
+                case '}':
+                    inGroup = false;
+                    tokens.Add(")");
+                    break;
+                case ',':
+                    if (inGroup)
+                    {
+                        tokens.Add("|");
+                        break;
+                    }
+
+                    tokens.Add("\\" + c);
+                    break;
+                default:
+                    tokens.Add(_escapeGlobChars.Contains(c) ? "\\" + c : c.ToString());
+                    break;
+            }
+        }
+
+        tokens.Add("$");
+        return string.Concat(tokens.ToArray());
+    }
+
+    internal static string? ToWebSocketBaseURL(string? baseURL)
+    {
+        if (string.IsNullOrEmpty(baseURL) || baseURL == null)
+        {
+            return baseURL;
+        }
+        // Allow http(s) baseURL to match ws(s) urls.
+        if (baseURL.StartsWith("http://"))
+        {
+            return baseURL.Replace("http://", "ws://");
+        }
+        if (baseURL.StartsWith("https://"))
+        {
+            return baseURL.Replace("https://", "wss://");
+        }
+        return baseURL;
+    }
+
+    internal static string? ResolveGlobToRegexPattern(string? baseURL, string glob, bool isWebSocketUrl)
+    {
+        if (isWebSocketUrl)
+        {
+            baseURL = ToWebSocketBaseURL(baseURL);
+        }
+        glob = ResolveGlobBase(baseURL, glob);
+        return GlobToRegexPattern(glob);
+    }
+
+    internal static string ResolveGlobBase(string? baseURL, string match)
+    {
+        // NOTE: Node.js version uses "$" in mapped tokens, but C# cannot swallow that.
+        // So we use "playwright-pw-" instead. It is also important that this string is lowercase.
+        if (!match.StartsWith("*"))
+        {
+            var tokenMap = new Dictionary<string, string>();
+
+            string MapToken(string original, string replacement)
+            {
+                if (string.IsNullOrEmpty(original))
+                {
+                    return string.Empty;
+                }
+                tokenMap[replacement] = original;
+                return replacement;
+            }
+
+            // Escaped `\\?` behaves the same as `?` in our glob patterns.
+            match = match.Replace("\\\\?", "?");
+            // Special case about: URLs as they are not relative to baseURL
+            if (match.StartsWith("about:") || match.StartsWith("data:") || match.StartsWith("chrome:") ||
+                match.StartsWith("edge:") || match.StartsWith("file:"))
+            {
+                return match;
+            }
+            // Glob symbols may be escaped in the URL and some of them such as ? affect resolution,
+            // so we replace them with safe components first.
+            var relativePath = string.Join("/", match.Split('/').Select((token, index) =>
+            {
+                if (token == "." || token == ".." || token == string.Empty)
+                {
+                    return token;
+                }
+                // Handle special case of http*://, note that the new schema has to be
+                // a web schema so that slashes are properly inserted after domain.
+                if (index == 0 && token.EndsWith(":"))
+                {
+                    return MapToken(token, "http:");
+                }
+                int questionIndex = token.IndexOf('?');
+                if (questionIndex == -1)
+                {
+                    return MapToken(token, $"playwright-pw-{index}-pw-playwright");
+                }
+                string newPrefix = MapToken(token.Substring(0, questionIndex), $"playwright-pw-{index}-pw-playwright");
+                string newSuffix = MapToken(token.Substring(questionIndex), $"?playwright-pw2-{index}-pw2-playwright");
+                return newPrefix + newSuffix;
+            }));
+
+            var (resolved, caseInsensitivePart) = ResolveBaseURL(baseURL, relativePath);
+            foreach (var kvp in tokenMap)
+            {
+                var normalize = caseInsensitivePart?.Contains(kvp.Key) == true;
+                resolved = resolved.Replace(kvp.Key, normalize ? kvp.Value.ToLowerInvariant() : kvp.Value);
+            }
+            match = resolved;
+        }
+        return match;
+    }
+
+    private static (string Resolved, string? CaseInsensitivePart) ResolveBaseURL(string? baseUrl, string url)
+    {
+        try
+        {
+            Uri uri;
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                uri = FixupTrailingSlash(new Uri(url, UriKind.Absolute));
+            }
+            else
+            {
+                uri = FixupTrailingSlash(new Uri(new Uri(baseUrl), new Uri(url, UriKind.RelativeOrAbsolute)));
+            }
+            var resolved = uri.ToString();
+            // Schema and domain are case-insensitive.
+            var caseInsensitivePrefix = $"{uri.Scheme}://{uri.Host}";
+            if (!uri.IsDefaultPort)
+            {
+                caseInsensitivePrefix += $":{uri.Port}";
+            }
+            return (resolved, caseInsensitivePrefix);
+        }
+        catch
+        {
+            return (url, null);
+        }
+    }
+
+    public bool Equals(string? globMatch, Regex? reMatch, Func<string, bool>? funcMatch, string? baseURL, bool isWebSocketUrl)
     {
         return this.re?.ToString() == reMatch?.ToString() && this.re?.Options == reMatch?.Options
             && this.func == funcMatch
             && this.glob == globMatch
-            && this.baseURL == baseURL;
+            && this.baseURL == baseURL
+            && this.isWebSocketUrl == isWebSocketUrl;
     }
 }

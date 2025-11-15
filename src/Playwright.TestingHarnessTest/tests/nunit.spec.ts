@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-import { test, expect } from '../baseTest';
+import { test, expect } from './baseTest';
 
 test.use({ testMode: 'nunit' });
 
@@ -221,7 +221,7 @@ test('should be able to parse BrowserName and LaunchOptions.Headless from runset
   expect(result.stdout).not.toContain("Headless")
 });
 
-test('should be able to parse LaunchOptions.Proxy from runsettings', async ({ runTest, proxyServer }) => {
+test('should be able to parse LaunchOptions.Proxy from runsettings', async ({ runTest, proxyServer, server }) => {
   const result = await runTest({
     'ExampleTests.cs': `
       using System;
@@ -237,7 +237,7 @@ test('should be able to parse LaunchOptions.Proxy from runsettings', async ({ ru
           public async Task Test()
           {
               Console.WriteLine("User-Agent: " + await Page.EvaluateAsync<string>("() => navigator.userAgent"));
-              await Page.GotoAsync("http://example.com");
+              await Page.GotoAsync("${server.EMPTY_PAGE}");
           }
       }`,
       '.runsettings': `
@@ -263,8 +263,8 @@ test('should be able to parse LaunchOptions.Proxy from runsettings', async ({ ru
 
   expect(result.stdout).not.toContain("Headless");
 
-  const { url, auth } = proxyServer.requests.find(r => r.url === 'http://example.com/')!;;
-  expect(url).toBe('http://example.com/');
+  const { url, auth } = proxyServer.requests.find(r => r.url === server.EMPTY_PAGE)!;
+  expect(url).toBe(server.EMPTY_PAGE);
   expect(auth).toBe('user:pwd');
 });
 
@@ -303,7 +303,7 @@ test('should be able to parse LaunchOptions.Args from runsettings', async ({ run
   expect(result.stdout).toContain("User-Agent: hello")
 });
 
-test('should be able to override context options', async ({ runTest }) => {
+test('should be able to override context options', async ({ runTest, server }) => {
   const result = await runTest({
     'ExampleTests.cs': `
       using System;
@@ -312,7 +312,7 @@ test('should be able to override context options', async ({ runTest }) => {
       using Microsoft.Playwright;
       using Microsoft.Playwright.NUnit;
       using NUnit.Framework;
-      
+
       namespace Playwright.TestingHarnessTest.NUnit;
 
       public class <class-name> : PageTest
@@ -330,7 +330,7 @@ test('should be able to override context options', async ({ runTest }) => {
 
             Assert.AreEqual("Foobar", await Page.EvaluateAsync<string>("() => navigator.userAgent"));
 
-            var response = await Page.GotoAsync("https://example.com/");
+            var response = await Page.GotoAsync("${server.EMPTY_PAGE}");
             Assert.AreEqual(await response.Request.HeaderValueAsync("Kekstar"), "KekStarValue");
         }
 
@@ -402,7 +402,7 @@ test.describe('Expect() timeout', () => {
       using Microsoft.Playwright;
       using Microsoft.Playwright.NUnit;
       using NUnit.Framework;
-      
+
       namespace Playwright.TestingHarnessTest.NUnit;
 
       public class <class-name> : PageTest
@@ -419,7 +419,7 @@ test.describe('Expect() timeout', () => {
     expect(result.passed).toBe(0);
     expect(result.failed).toBe(1);
     expect(result.total).toBe(1);
-    expect(result.rawStdout).toContain("LocatorAssertions.ToHaveTextAsync with timeout 5000ms")
+    expect(result.rawStdout).toContain("Expect \"ToHaveTextAsync\" with timeout 5000ms")
   });
 
   test('should be able to override it via each Expect() call', async ({ runTest }) => {
@@ -431,7 +431,7 @@ test.describe('Expect() timeout', () => {
         using Microsoft.Playwright;
         using Microsoft.Playwright.NUnit;
         using NUnit.Framework;
-        
+
         namespace Playwright.TestingHarnessTest.NUnit;
 
         public class <class-name> : PageTest
@@ -448,7 +448,7 @@ test.describe('Expect() timeout', () => {
     expect(result.passed).toBe(0);
     expect(result.failed).toBe(1);
     expect(result.total).toBe(1);
-    expect(result.rawStdout).toContain("LocatorAssertions.ToHaveTextAsync with timeout 100ms")
+    expect(result.rawStdout).toContain("Expect \"ToHaveTextAsync\" with timeout 100ms")
   });
   test('should be able to override it via the global config', async ({ runTest }) => {
     const result = await runTest({
@@ -459,7 +459,7 @@ test.describe('Expect() timeout', () => {
       using Microsoft.Playwright;
       using Microsoft.Playwright.NUnit;
       using NUnit.Framework;
-      
+
       namespace Playwright.TestingHarnessTest.NUnit;
 
       public class <class-name> : PageTest
@@ -484,7 +484,7 @@ test.describe('Expect() timeout', () => {
     expect(result.passed).toBe(0);
     expect(result.failed).toBe(1);
     expect(result.total).toBe(1);
-    expect(result.rawStdout).toContain("LocatorAssertions.ToHaveTextAsync with timeout 123ms")
+    expect(result.rawStdout).toContain("Expect \"ToHaveTextAsync\" with timeout 123ms")
   });
 });
 

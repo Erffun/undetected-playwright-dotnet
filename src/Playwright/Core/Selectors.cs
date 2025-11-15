@@ -23,78 +23,58 @@
  */
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Playwright.Helpers;
-using Microsoft.Playwright.Transport;
 
 namespace Microsoft.Playwright.Core;
 
-internal class Selectors : ChannelOwner
+internal class Selectors : ISelectors
 {
-    internal Selectors(ChannelOwner parent, string guid) : base(parent, guid)
-    {
-    }
-}
+    internal readonly List<BrowserContext> _contextsForSelectors = new();
+    internal readonly List<Dictionary<string, object?>> _selectorEngines = new();
+    internal string? _testIdAttributeName;
 
-internal class SelectorsAPI : ISelectors
-{
-    private readonly HashSet<Selectors> _channels = new();
-    private readonly List<Dictionary<string, object>> _registrations = new();
-
-    public async Task RegisterAsync(string name, SelectorsRegisterOptions options = default)
+    public async Task RegisterAsync(string name, SelectorsRegisterOptions? options = default)
     {
+        if (_selectorEngines.Where(engine => engine["name"]?.ToString() == name).Any())
+        {
+            throw new PlaywrightException($"\"{name}\" selector engine has been already registered");
+        }
+
         options ??= new SelectorsRegisterOptions();
         var source = ScriptsHelper.EvaluationScript(options.Script, options.Path, false);
-        var @params = new Dictionary<string, object>()
+        var engine = new Dictionary<string, object?>()
         {
             ["name"] = name,
             ["source"] = source,
-            ["contentScript"] = options.ContentScript,
         };
-        foreach (var channel in _channels)
+        if (options.ContentScript != null)
         {
-            await channel.SendMessageToServerAsync("register", @params).ConfigureAwait(false);
+            engine["contentScript"] = options.ContentScript;
         }
-        _registrations.Add(@params);
+        foreach (var context in _contextsForSelectors.ToArray())
+        {
+            await context.SendMessageToServerAsync("registerSelectorEngine", new Dictionary<string, object?>
+            {
+                ["selectorEngine"] = engine,
+            }).ConfigureAwait(false);
+        }
+        _selectorEngines.Add(engine);
     }
 
     public void SetTestIdAttribute(string attributeName)
     {
         Locator.SetTestIdAttribute(attributeName);
-        foreach (var channel in _channels)
+        _testIdAttributeName = attributeName;
+        foreach (var context in _contextsForSelectors.ToArray())
         {
-            channel.SendMessageToServerAsync(
+            context.SendMessageToServerAsync(
             "setTestIdAttributeName",
-            new Dictionary<string, object>
+            new Dictionary<string, object?>
             {
                 ["testIdAttributeName"] = attributeName,
             }).IgnoreException();
         }
     }
-
-    internal void AddChannel(Selectors channel)
-    {
-        _channels.Add(channel);
-        foreach (var @params in _registrations)
-        {
-            // This should not fail except for connection closure, but just in case we catch.
-            channel.SendMessageToServerAsync("register", @params).IgnoreException();
-            channel.SendMessageToServerAsync("setTestIdAttributeName", new Dictionary<string, object>
-            {
-                ["testIdAttributeName"] = Locator.TestIdAttributeName(),
-            }).IgnoreException();
-        }
-    }
-
-    internal void RemoveChannel(Selectors channel)
-    {
-        _channels.Remove(channel);
-    }
-}
-
-internal record SelectorsRegisterParams
-{
-    internal string Name;
-    internal string Source;
-    internal bool? ContentScript;
 }

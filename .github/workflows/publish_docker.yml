@@ -15,7 +15,7 @@ jobs:
       contents: read    # This is required for actions/checkout to succeed
     environment: Docker
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Azure login
       uses: azure/login@v2
       with:
@@ -25,7 +25,7 @@ jobs:
     - name: Login to ACR via OIDC
       run: az acr login --name playwright
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
     - name: Install prerequisites and download drivers

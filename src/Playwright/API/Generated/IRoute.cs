@@ -24,8 +24,6 @@
 
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -95,7 +93,19 @@ public partial interface IRoute
     /// other matching handlers won't be invoked. Use <see cref="IRoute.FallbackAsync"/>
     /// If you want next matching handler in the chain to be invoked.
     /// </para>
+    /// <para>
+    /// The <c>Cookie</c> header cannot be overridden using this method. If a value is provided,
+    /// it will be ignored, and the cookie will be loaded from the browser's cookie store.
+    /// To set custom cookies, use <see cref="IBrowserContext.AddCookiesAsync"/>.
+    /// </para>
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The <c>Cookie</c> header cannot be overridden using this method. If a value is provided,
+    /// it will be ignored, and the cookie will be loaded from the browser's cookie store.
+    /// To set custom cookies, use <see cref="IBrowserContext.AddCookiesAsync"/>.
+    /// </para>
+    /// </remarks>
     /// <param name="options">Call options</param>
     Task ContinueAsync(RouteContinueOptions? options = default);
 
@@ -222,5 +232,3 @@ public partial interface IRoute
     /// <summary><para>A request to be routed.</para></summary>
     IRequest Request { get; }
 }
-
-#nullable disable

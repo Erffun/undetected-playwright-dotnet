@@ -26,8 +26,6 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -211,6 +209,68 @@ public partial interface ILocatorAssertions
     /// </summary>
     /// <param name="options">Call options</param>
     Task ToBeVisibleAsync(LocatorAssertionsToBeVisibleOptions? options = default);
+
+    /// <summary>
+    /// <para>
+    /// Ensures the <see cref="ILocator"/> points to an element with given CSS classes.
+    /// All classes from the asserted value, separated by spaces, must be present in the
+    /// <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/classList">Element.classList</a>
+    /// in any order.
+    /// </para>
+    /// <para>**Usage**</para>
+    /// <code>
+    /// var locator = Page.Locator("#component");<br/>
+    /// await Expect(locator).ToContainClassAsync("middle selected row");<br/>
+    /// await Expect(locator).ToContainClassAsync("selected");<br/>
+    /// await Expect(locator).ToContainClassAsync("row middle");
+    /// </code>
+    /// <para>
+    /// When an array is passed, the method asserts that the list of elements located matches
+    /// the corresponding list of expected class lists. Each element's class attribute is
+    /// matched against the corresponding class in the array:
+    /// </para>
+    /// <code>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
+    /// await Expect(locator).ToContainClassAsync(new string[]{"inactive", "active", "inactive"});
+    /// </code>
+    /// </summary>
+    /// <param name="expected">
+    /// A string containing expected class names, separated by spaces, or a list of such
+    /// strings to assert multiple elements.
+    /// </param>
+    /// <param name="options">Call options</param>
+    Task ToContainClassAsync(string expected, LocatorAssertionsToContainClassOptions? options = default);
+
+    /// <summary>
+    /// <para>
+    /// Ensures the <see cref="ILocator"/> points to an element with given CSS classes.
+    /// All classes from the asserted value, separated by spaces, must be present in the
+    /// <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/classList">Element.classList</a>
+    /// in any order.
+    /// </para>
+    /// <para>**Usage**</para>
+    /// <code>
+    /// var locator = Page.Locator("#component");<br/>
+    /// await Expect(locator).ToContainClassAsync("middle selected row");<br/>
+    /// await Expect(locator).ToContainClassAsync("selected");<br/>
+    /// await Expect(locator).ToContainClassAsync("row middle");
+    /// </code>
+    /// <para>
+    /// When an array is passed, the method asserts that the list of elements located matches
+    /// the corresponding list of expected class lists. Each element's class attribute is
+    /// matched against the corresponding class in the array:
+    /// </para>
+    /// <code>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
+    /// await Expect(locator).ToContainClassAsync(new string[]{"inactive", "active", "inactive"});
+    /// </code>
+    /// </summary>
+    /// <param name="expected">
+    /// A string containing expected class names, separated by spaces, or a list of such
+    /// strings to assert multiple elements.
+    /// </param>
+    /// <param name="options">Call options</param>
+    Task ToContainClassAsync(IEnumerable<string> expected, LocatorAssertionsToContainClassOptions? options = default);
 
     /// <summary>
     /// <para>
@@ -512,13 +572,13 @@ public partial interface ILocatorAssertions
     /// <para>
     /// Ensures the <see cref="ILocator"/> points to an element with given CSS classes.
     /// When a string is provided, it must fully match the element's <c>class</c> attribute.
-    /// To match individual classes or perform partial matches, use a regular expression:
+    /// To match individual classes use <see cref="ILocatorAssertions.ToContainClassAsync"/>.
     /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// var locator = Page.Locator("#component");<br/>
-    /// await Expect(locator).ToHaveClassAsync(new Regex("(^|\\s)selected(\\s|$)"));<br/>
-    /// await Expect(locator).ToHaveClassAsync("middle selected row");
+    /// await Expect(locator).ToHaveClassAsync("middle selected row");<br/>
+    /// await Expect(locator).ToHaveClassAsync(new Regex("(^|\\s)selected(\\s|$)"));
     /// </code>
     /// <para>
     /// When an array is passed, the method asserts that the list of elements located matches
@@ -526,7 +586,7 @@ public partial interface ILocatorAssertions
     /// is matched against the corresponding string or regular expression in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToHaveClassAsync(new string[]{"component", "component selected", "component"});
     /// </code>
     /// </summary>
@@ -538,13 +598,13 @@ public partial interface ILocatorAssertions
     /// <para>
     /// Ensures the <see cref="ILocator"/> points to an element with given CSS classes.
     /// When a string is provided, it must fully match the element's <c>class</c> attribute.
-    /// To match individual classes or perform partial matches, use a regular expression:
+    /// To match individual classes use <see cref="ILocatorAssertions.ToContainClassAsync"/>.
     /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// var locator = Page.Locator("#component");<br/>
-    /// await Expect(locator).ToHaveClassAsync(new Regex("(^|\\s)selected(\\s|$)"));<br/>
-    /// await Expect(locator).ToHaveClassAsync("middle selected row");
+    /// await Expect(locator).ToHaveClassAsync("middle selected row");<br/>
+    /// await Expect(locator).ToHaveClassAsync(new Regex("(^|\\s)selected(\\s|$)"));
     /// </code>
     /// <para>
     /// When an array is passed, the method asserts that the list of elements located matches
@@ -552,7 +612,7 @@ public partial interface ILocatorAssertions
     /// is matched against the corresponding string or regular expression in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToHaveClassAsync(new string[]{"component", "component selected", "component"});
     /// </code>
     /// </summary>
@@ -564,13 +624,13 @@ public partial interface ILocatorAssertions
     /// <para>
     /// Ensures the <see cref="ILocator"/> points to an element with given CSS classes.
     /// When a string is provided, it must fully match the element's <c>class</c> attribute.
-    /// To match individual classes or perform partial matches, use a regular expression:
+    /// To match individual classes use <see cref="ILocatorAssertions.ToContainClassAsync"/>.
     /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// var locator = Page.Locator("#component");<br/>
-    /// await Expect(locator).ToHaveClassAsync(new Regex("(^|\\s)selected(\\s|$)"));<br/>
-    /// await Expect(locator).ToHaveClassAsync("middle selected row");
+    /// await Expect(locator).ToHaveClassAsync("middle selected row");<br/>
+    /// await Expect(locator).ToHaveClassAsync(new Regex("(^|\\s)selected(\\s|$)"));
     /// </code>
     /// <para>
     /// When an array is passed, the method asserts that the list of elements located matches
@@ -578,7 +638,7 @@ public partial interface ILocatorAssertions
     /// is matched against the corresponding string or regular expression in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToHaveClassAsync(new string[]{"component", "component selected", "component"});
     /// </code>
     /// </summary>
@@ -590,13 +650,13 @@ public partial interface ILocatorAssertions
     /// <para>
     /// Ensures the <see cref="ILocator"/> points to an element with given CSS classes.
     /// When a string is provided, it must fully match the element's <c>class</c> attribute.
-    /// To match individual classes or perform partial matches, use a regular expression:
+    /// To match individual classes use <see cref="ILocatorAssertions.ToContainClassAsync"/>.
     /// </para>
     /// <para>**Usage**</para>
     /// <code>
     /// var locator = Page.Locator("#component");<br/>
-    /// await Expect(locator).ToHaveClassAsync(new Regex("(^|\\s)selected(\\s|$)"));<br/>
-    /// await Expect(locator).ToHaveClassAsync("middle selected row");
+    /// await Expect(locator).ToHaveClassAsync("middle selected row");<br/>
+    /// await Expect(locator).ToHaveClassAsync(new Regex("(^|\\s)selected(\\s|$)"));
     /// </code>
     /// <para>
     /// When an array is passed, the method asserts that the list of elements located matches
@@ -604,7 +664,7 @@ public partial interface ILocatorAssertions
     /// is matched against the corresponding string or regular expression in the array:
     /// </para>
     /// <code>
-    /// var locator = Page.Locator("list &gt; .component");<br/>
+    /// var locator = Page.Locator(".list &gt; .component");<br/>
     /// await Expect(locator).ToHaveClassAsync(new string[]{"component", "component selected", "component"});
     /// </code>
     /// </summary>
@@ -994,5 +1054,3 @@ public partial interface ILocatorAssertions
     /// <param name="options">Call options</param>
     Task ToMatchAriaSnapshotAsync(string expected, LocatorAssertionsToMatchAriaSnapshotOptions? options = default);
 }
-
-#nullable disable

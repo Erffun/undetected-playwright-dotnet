@@ -27,8 +27,6 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 /// <summary>
@@ -56,17 +54,13 @@ namespace Microsoft.Playwright;
 public partial interface IBrowserContext
 {
     /// <summary>
-    /// <para>Only works with Chromium browser's persistent context.</para>
-    /// <para>Emitted when new background page is created in the context.</para>
-    /// <code>
-    /// context.BackgroundPage += (_, backgroundPage) =&gt;<br/>
-    /// {<br/>
-    ///     Console.WriteLine(backgroundPage.Url);<br/>
-    /// };<br/>
-    ///
-    /// </code>
+    /// <para>
+    /// **DEPRECATED** Background pages have been removed from Chromium together with Manifest
+    /// V2 extensions.
+    /// </para>
+    /// <para>This event is not emitted.</para>
     /// </summary>
-    /// <remarks><para>Only works with Chromium browser's persistent context.</para></remarks>
+    [System.Obsolete]
     event EventHandler<IPage> BackgroundPage;
 
     /// <summary><para>Playwright has ability to mock clock and passage of time.</para></summary>
@@ -272,17 +266,14 @@ public partial interface IBrowserContext
     /// <param name="scriptPath">Instead of specifying <paramref name="script"/>, gives the file name to load from.</param>
     Task AddInitScriptAsync(string? script = default, string? scriptPath = default);
 
-    /// <summary>
-    /// <para>Background pages are only supported on Chromium-based browsers.</para>
-    /// <para>All existing background pages in the context.</para>
-    /// </summary>
-    /// <remarks><para>Background pages are only supported on Chromium-based browsers.</para></remarks>
+    /// <summary><para>Returns an empty list.</para></summary>
+    [System.Obsolete]
     IReadOnlyList<IPage> BackgroundPages { get; }
 
     /// <summary>
     /// <para>
-    /// Returns the browser instance of the context. If it was launched as a persistent
-    /// context null gets returned.
+    /// Gets the browser instance that owns the context. Returns <c>null</c> if the context
+    /// is created outside of normal browser, e.g. Android or Electron.
     /// </para>
     /// </summary>
     IBrowser? Browser { get; }
@@ -333,7 +324,24 @@ public partial interface IBrowserContext
     /// </para>
     /// </summary>
     /// <param name="urls">Optional list of URLs.</param>
-    Task<IReadOnlyList<BrowserContextCookiesResult>> CookiesAsync(IEnumerable<string>? urls = default);
+    Task<IReadOnlyList<BrowserContextCookiesResult>> CookiesAsync(string urls);
+
+    /// <summary>
+    /// <para>
+    /// If no URLs are specified, this method returns all cookies. If URLs are specified,
+    /// only cookies that affect those URLs are returned.
+    /// </para>
+    /// </summary>
+    /// <param name="urls">Optional list of URLs.</param>
+    Task<IReadOnlyList<BrowserContextCookiesResult>> CookiesAsync(IEnumerable<string> urls);
+
+    /// <summary>
+    /// <para>
+    /// If no URLs are specified, this method returns all cookies. If URLs are specified,
+    /// only cookies that affect those URLs are returned.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<BrowserContextCookiesResult>> CookiesAsync();
 
     /// <summary>
     /// <para>
@@ -449,6 +457,8 @@ public partial interface IBrowserContext
     /// <item><description><c>'clipboard-write'</c></description></item>
     /// <item><description><c>'geolocation'</c></description></item>
     /// <item><description><c>'gyroscope'</c></description></item>
+    /// <item><description><c>'local-fonts'</c></description></item>
+    /// <item><description><c>'local-network-access'</c></description></item>
     /// <item><description><c>'magnetometer'</c></description></item>
     /// <item><description><c>'microphone'</c></description></item>
     /// <item><description><c>'midi-sysex'</c> (system-exclusive midi)</description></item>
@@ -556,9 +566,10 @@ public partial interface IBrowserContext
     /// <para>Enabling routing disables http cache.</para>
     /// </remarks>
     /// <param name="url">
-    /// A glob pattern, regex pattern or predicate receiving <see cref="URL"/> to match
-    /// while routing. When a <see cref="IBrowser.NewContextAsync"/> via the context options
-    /// was provided and the passed URL is a path, it gets merged via the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
+    /// A glob pattern, regex pattern, or predicate that receives a <see cref="URL"/> to
+    /// match during routing. If <see cref="IBrowser.NewContextAsync"/> is set in the context
+    /// options and the provided URL is a string that does not start with <c>*</c>, it is
+    /// resolved using the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
     /// URL()</c></a> constructor.
     /// </param>
     /// <param name="handler">handler function to route the request.</param>
@@ -624,9 +635,10 @@ public partial interface IBrowserContext
     /// <para>Enabling routing disables http cache.</para>
     /// </remarks>
     /// <param name="url">
-    /// A glob pattern, regex pattern or predicate receiving <see cref="URL"/> to match
-    /// while routing. When a <see cref="IBrowser.NewContextAsync"/> via the context options
-    /// was provided and the passed URL is a path, it gets merged via the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
+    /// A glob pattern, regex pattern, or predicate that receives a <see cref="URL"/> to
+    /// match during routing. If <see cref="IBrowser.NewContextAsync"/> is set in the context
+    /// options and the provided URL is a string that does not start with <c>*</c>, it is
+    /// resolved using the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
     /// URL()</c></a> constructor.
     /// </param>
     /// <param name="handler">handler function to route the request.</param>
@@ -692,9 +704,10 @@ public partial interface IBrowserContext
     /// <para>Enabling routing disables http cache.</para>
     /// </remarks>
     /// <param name="url">
-    /// A glob pattern, regex pattern or predicate receiving <see cref="URL"/> to match
-    /// while routing. When a <see cref="IBrowser.NewContextAsync"/> via the context options
-    /// was provided and the passed URL is a path, it gets merged via the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
+    /// A glob pattern, regex pattern, or predicate that receives a <see cref="URL"/> to
+    /// match during routing. If <see cref="IBrowser.NewContextAsync"/> is set in the context
+    /// options and the provided URL is a string that does not start with <c>*</c>, it is
+    /// resolved using the <a href="https://developer.mozilla.org/en-US/docs/Web/API/URL/URL"><c>new
     /// URL()</c></a> constructor.
     /// </param>
     /// <param name="handler">handler function to route the request.</param>
@@ -1032,5 +1045,3 @@ public partial interface IBrowserContext
     /// <param name="options">Call options</param>
     Task<IPage> RunAndWaitForPageAsync(Func<Task> action, BrowserContextRunAndWaitForPageOptions? options = default);
 }
-
-#nullable disable

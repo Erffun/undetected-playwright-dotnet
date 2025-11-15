@@ -29,32 +29,29 @@ namespace Microsoft.Playwright.Transport.Protocol;
 internal class PlaywrightInitializer
 {
     [JsonPropertyName("chromium")]
-    public Core.BrowserType Chromium { get; set; }
+    public Core.BrowserType Chromium { get; set; } = null!;
 
     [JsonPropertyName("firefox")]
-    public Core.BrowserType Firefox { get; set; }
+    public Core.BrowserType Firefox { get; set; } = null!;
 
     [JsonPropertyName("webkit")]
-    public Core.BrowserType Webkit { get; set; }
+    public Core.BrowserType Webkit { get; set; } = null!;
 
-    [JsonPropertyName("bidiChromium")]
-    public Core.BrowserType BidiChromium { get; set; }
+    [JsonPropertyName("_bidiChromium")]
+    public Core.BrowserType _bidiChromium { get; set; } = null!;
 
-    [JsonPropertyName("bidiFirefox")]
-    public Core.BrowserType BidiFirefox { get; set; }
+    [JsonPropertyName("_bidiFirefox")]
+    public Core.BrowserType _bidiFirefox { get; set; } = null!;
 
     [JsonPropertyName("utils")]
-    public Core.LocalUtils Utils { get; set; }
-
-    [JsonPropertyName("selectors")]
-    public Core.Selectors Selectors { get; set; }
+    public Core.LocalUtils Utils { get; set; } = null!;
 
     [JsonPropertyName("preLaunchedBrowser")]
-    public Core.Browser PreLaunchedBrowser { get; set; }
+    public Core.Browser PreLaunchedBrowser { get; set; } = null!;
 
     [JsonPropertyName("preConnectedAndroidDevice")]
-    public Core.AndroidDevice PreConnectedAndroidDevice { get; set; }
+    public Core.AndroidDevice PreConnectedAndroidDevice { get; set; } = null!;
 
     [JsonPropertyName("socksSupport")]
-    public Core.SocksSupport SocksSupport { get; set; }
+    public Core.SocksSupport SocksSupport { get; set; } = null!;
 }

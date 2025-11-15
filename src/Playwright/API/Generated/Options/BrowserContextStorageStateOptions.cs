@@ -24,8 +24,6 @@
 
 using System.Text.Json.Serialization;
 
-#nullable enable
-
 namespace Microsoft.Playwright;
 
 public class BrowserContextStorageStateOptions
@@ -49,9 +47,7 @@ public class BrowserContextStorageStateOptions
     /// in the storage state snapshot. If your application uses IndexedDB to store authentication
     /// tokens, like Firebase Authentication, enable this.
     /// </para>
-    /// <para>IndexedDBs with typed arrays are currently not supported.</para>
     /// </summary>
-    /// <remarks><para>IndexedDBs with typed arrays are currently not supported.</para></remarks>
     [JsonPropertyName("indexedDB")]
     public bool? IndexedDB { get; set; }
 
@@ -66,5 +62,3 @@ public class BrowserContextStorageStateOptions
     [JsonPropertyName("path")]
     public string? Path { get; set; }
 }
-
-#nullable disable
